@@ -1,0 +1,74 @@
+org: kartago
+service: compras-api-stepfunctions
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  timeout: 10
+  memorySize: 1024
+  iam:
+    role: arn:aws:iam::721114448578:role/LabRole
+  environment:
+    COMPRAS_TABLE: compras-${self:provider.stage}
+    PRODUCTOS_TABLE: productos-${self:provider.stage}
+    JWT_SECRET: ${env:JWT_SECRET, 'mi-secreto-temporal-dev'}
+
+functions:
+  registrarCompra:
+    handler: handler.registrarCompra
+    events:
+      - http:
+          path: /compras
+          method: post
+          cors: true
+
+  listarCompras:
+    handler: handler.listarCompras
+    events:
+      - http:
+          path: /compras
+          method: get
+          cors: true
+
+  obtenerCompra:
+    handler: handler.obtenerCompra
+    events:
+      - http:
+          path: /compras/{compra_id}
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    ComprasTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: compras-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: compra_id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: compra_id
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: user-index
+            KeySchema:
+              - AttributeName: tenant_id
+                KeyType: HASH
+              - AttributeName: user_id
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+plugins:
+  - serverless-offline

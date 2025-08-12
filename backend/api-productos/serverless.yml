@@ -1,0 +1,78 @@
+org: kartago
+service: productos-api-stepfunctions
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  timeout: 10
+  memorySize: 1024
+  iam:
+    role: arn:aws:iam::721114448578:role/LabRole
+  environment:
+    PRODUCTOS_TABLE: productos-${self:provider.stage}
+    JWT_SECRET: ${env:JWT_SECRET, 'mi-secreto-temporal-dev'}
+
+functions:
+  crearProducto:
+    handler: handler.crearProducto
+    events:
+      - http:
+          path: /productos
+          method: post
+          cors: true
+
+  listarProductos:
+    handler: handler.listarProductos
+    events:
+      - http:
+          path: /productos
+          method: get
+          cors: true
+
+  buscarProducto:
+    handler: handler.buscarProducto
+    events:
+      - http:
+          path: /productos/{codigo}
+          method: get
+          cors: true
+
+  modificarProducto:
+    handler: handler.modificarProducto
+    events:
+      - http:
+          path: /productos/{codigo}
+          method: put
+          cors: true
+
+  eliminarProducto:
+    handler: handler.eliminarProducto
+    events:
+      - http:
+          path: /productos/{codigo}
+          method: delete
+          cors: true
+
+resources:
+  Resources:
+    ProductosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: productos-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: tenant_id
+            AttributeType: S
+          - AttributeName: codigo
+            AttributeType: S
+        KeySchema:
+          - AttributeName: tenant_id
+            KeyType: HASH
+          - AttributeName: codigo
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+plugins:
+  - serverless-offline

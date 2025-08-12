@@ -1,0 +1,22 @@
+{
+  "name": "compras-api-stepfunctions",
+  "version": "1.0.0",
+  "description": "API de Compras para proyecto Step Functions",
+  "main": "handler.js",
+  "type": "module",
+  "scripts": {
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:test": "serverless deploy --stage test", 
+    "deploy:prod": "serverless deploy --stage prod",
+    "offline": "serverless offline"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1691.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.8.0"
+  }
+}
