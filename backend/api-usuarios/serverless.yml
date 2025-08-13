@@ -1,6 +1,8 @@
 org: kartago
 service: usuarios-api-stepfunctions
 
+useDotenv: true
+
 provider:
   name: aws
   runtime: nodejs18.x
