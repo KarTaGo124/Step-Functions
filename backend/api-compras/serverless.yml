@@ -8,11 +8,11 @@ provider:
   timeout: 10
   memorySize: 1024
   iam:
-    role: arn:aws:iam::721114448578:role/LabRole
+    role: arn:aws:iam::501635705879:role/LabRole
   environment:
     COMPRAS_TABLE: compras-${self:provider.stage}
     PRODUCTOS_TABLE: productos-${self:provider.stage}
-    JWT_SECRET: ${env:JWT_SECRET, 'mi-secreto-temporal-dev'}
+    JWT_SECRET: ${env:JWT_SECRET}
 
 functions:
   registrarCompra:
