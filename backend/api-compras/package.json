@@ -7,8 +7,7 @@
   "scripts": {
     "deploy:dev": "serverless deploy --stage dev",
     "deploy:test": "serverless deploy --stage test", 
-    "deploy:prod": "serverless deploy --stage prod",
-    "offline": "serverless offline"
+    "deploy:prod": "serverless deploy --stage prod"
   },
   "dependencies": {
     "aws-sdk": "^2.1691.0",
@@ -17,6 +16,6 @@
   },
   "devDependencies": {
     "serverless": "^3.38.0",
-    "serverless-offline": "^13.8.0"
+    "serverless-dotenv-plugin": "^6.0.0"
   }
 }

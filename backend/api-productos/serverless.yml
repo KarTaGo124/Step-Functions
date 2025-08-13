@@ -5,6 +5,7 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
+  stage: ${opt:stage, 'dev'}
   timeout: 10
   memorySize: 1024
   iam:
@@ -75,4 +76,4 @@ resources:
           StreamViewType: NEW_AND_OLD_IMAGES
 
 plugins:
-  - serverless-offline
+  - serverless-dotenv-plugin
