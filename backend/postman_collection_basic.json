@@ -1,0 +1,1141 @@
+{
+  "info": {
+    "name": "Backend APIs - Testing Completo",
+    "description": "Colección completa para probar las APIs del backend con variables de entorno optimizadas",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0"
+  },
+  "variable": [
+    {
+      "key": "aws_region",
+      "value": "us-east-1",
+      "description": "Región de AWS donde están desplegadas las APIs"
+    },
+    {
+      "key": "stage",
+      "value": "dev",
+      "description": "Stage de deployment (dev, prod, etc.)"
+    },
+    {
+      "key": "api_usuarios_id",
+      "value": "TU_API_USUARIOS_ID",
+      "description": "🔧 CAMBIAR: ID del API Gateway para usuarios (ej: abc123xyz)"
+    },
+    {
+      "key": "api_productos_id",
+      "value": "TU_API_PRODUCTOS_ID", 
+      "description": "🔧 CAMBIAR: ID del API Gateway para productos (ej: def456uvw)"
+    },
+    {
+      "key": "api_compras_id",
+      "value": "TU_API_COMPRAS_ID",
+      "description": "🔧 CAMBIAR: ID del API Gateway para compras (ej: ghi789rst)"
+    },
+    {
+      "key": "base_url_usuarios",
+      "value": "https://{{api_usuarios_id}}.execute-api.{{aws_region}}.amazonaws.com/{{stage}}",
+      "description": "URL completa para API Usuarios (se construye automáticamente)"
+    },
+    {
+      "key": "base_url_productos",
+      "value": "https://{{api_productos_id}}.execute-api.{{aws_region}}.amazonaws.com/{{stage}}",
+      "description": "URL completa para API Productos (se construye automáticamente)"
+    },
+    {
+      "key": "base_url_compras",
+      "value": "https://{{api_compras_id}}.execute-api.{{aws_region}}.amazonaws.com/{{stage}}",
+      "description": "URL completa para API Compras (se construye automáticamente)"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "description": "Token JWT obtenido del login (se actualiza automáticamente)"
+    },
+    {
+      "key": "tenant_id",
+      "value": "tenant1",
+      "description": "ID del tenant para multi-tenancy"
+    },
+    {
+      "key": "test_user_email",
+      "value": "test@backend.com",
+      "description": "Email del usuario de testing"
+    },
+    {
+      "key": "test_user_password",
+      "value": "password123",
+      "description": "Password del usuario de testing"
+    },
+    {
+      "key": "test_user_name",
+      "value": "Usuario Test Backend",
+      "description": "Nombre del usuario de testing"
+    },
+    {
+      "key": "last_compra_id",
+      "value": "",
+      "description": "ID de la última compra creada (se actualiza automáticamente)"
+    },
+    {
+      "key": "last_producto_codigo",
+      "value": "",
+      "description": "Código del último producto creado (se actualiza automáticamente)"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. 👤 API USUARIOS",
+      "item": [
+        {
+          "name": "1.1 ✅ Crear Usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar respuesta exitosa",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Usuario creado exitosamente');",
+                  "    console.log('Email:', pm.collectionVariables.get('test_user_email'));",
+                  "    console.log('Tenant:', pm.collectionVariables.get('tenant_id'));",
+                  "    if (response.user_id) {",
+                  "        console.log('User ID:', response.user_id);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error creando usuario - Código:', pm.response.code);",
+                  "    console.log('Respuesta:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"{{test_user_password}}\",\n  \"nombre\": \"{{test_user_name}}\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_usuarios}}/usuarios/registro",
+              "host": ["{{base_url_usuarios}}"],
+              "path": ["usuarios", "registro"]
+            },
+            "description": "Crear nuevo usuario en el sistema con datos de testing predefinidos"
+          }
+        },
+        {
+          "name": "1.2 🔑 Login Usuario (Obtener Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Extraer y guardar token automáticamente",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('jwt_token', response.token);",
+                  "        console.log('✅ Login exitoso - Token JWT guardado');",
+                  "        console.log('Token preview:', response.token.substring(0, 50) + '...');",
+                  "        console.log('Válido por: 1 hora');",
+                  "        ",
+                  "        // Mostrar info del usuario",
+                  "        if (response.user) {",
+                  "            console.log('Usuario logueado:', response.user.nombre);",
+                  "            console.log('Email:', response.user.email);",
+                  "        }",
+                  "    } else {",
+                  "        console.log('❌ Login exitoso pero sin token en respuesta');",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error en login - Código:', pm.response.code);",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"{{test_user_password}}\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_usuarios}}/usuarios/login",
+              "host": ["{{base_url_usuarios}}"],
+              "path": ["usuarios", "login"]
+            },
+            "description": "Login de usuario y obtención de token JWT (válido por 1 hora)"
+          }
+        },
+        {
+          "name": "1.3 ✅ Validar Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar token y mostrar info",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Token válido y autorizado');",
+                  "    console.log('User ID:', response.user_id);",
+                  "    console.log('Email:', response.email);",
+                  "    console.log('Tenant ID:', response.tenant_id);",
+                  "    console.log('Rol:', response.role);",
+                  "} else {",
+                  "    console.log('❌ Token inválido o expirado - Código:', pm.response.code);",
+                  "    console.log('Realizar login nuevamente');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_usuarios}}/usuarios/validar",
+              "host": ["{{base_url_usuarios}}"],
+              "path": ["usuarios", "validar"]
+            },
+            "description": "Validar que el token JWT es válido y obtener información del usuario"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 📦 API PRODUCTOS",
+      "item": [
+        {
+          "name": "2.1 📦 Crear Producto - Básico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar código del producto creado",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Producto básico creado exitosamente');",
+                  "    console.log('Código:', response.codigo);",
+                  "    console.log('Nombre:', response.nombre);",
+                  "    console.log('Precio: $' + response.precio);",
+                  "    console.log('Stock:', response.stock);",
+                  "    pm.collectionVariables.set('last_producto_codigo', response.codigo);",
+                  "} else {",
+                  "    console.log('❌ Error creando producto - Código:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"TEST001\",\n  \"nombre\": \"Producto Test Básico\",\n  \"descripcion\": \"Producto para testing de la API - Precio bajo\",\n  \"precio\": 99.99,\n  \"stock\": 100,\n  \"categoria\": \"Testing\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_productos}}/productos",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos"]
+            },
+            "description": "Crear producto básico para testing (precio < $500)"
+          }
+        },
+        {
+          "name": "2.2 💎 Crear Producto - Premium",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar producto premium creado",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Producto premium creado exitosamente');",
+                  "    console.log('Código:', response.codigo);",
+                  "    console.log('Precio: $' + response.precio + ' (> $500 - Candidato para Step Functions)');",
+                  "    console.log('Stock:', response.stock);",
+                  "} else {",
+                  "    console.log('❌ Error creando producto premium - Código:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"TEST002\",\n  \"nombre\": \"Laptop Gaming Premium\",\n  \"descripcion\": \"Laptop para gaming de alta gama con RTX 4080\",\n  \"precio\": 1599.99,\n  \"stock\": 25,\n  \"categoria\": \"Electrónicos\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_productos}}/productos",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos"]
+            },
+            "description": "Crear producto premium (precio > $500) - Futuro candidato para Step Functions"
+          }
+        },
+        {
+          "name": "2.3 ⚠️ Crear Producto - Stock Limitado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar producto con stock limitado",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Producto con stock limitado creado');",
+                  "    console.log('Código:', response.codigo);",
+                  "    console.log('Stock:', response.stock + ' (< 10 - Candidato para alertas de inventario)');",
+                  "    console.log('Precio: $' + response.precio);",
+                  "} else {",
+                  "    console.log('❌ Error creando producto stock limitado - Código:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"TEST003\",\n  \"nombre\": \"Mouse Inalámbrico Gaming\",\n  \"descripcion\": \"Mouse inalámbrico ergonómico para gaming\",\n  \"precio\": 29.99,\n  \"stock\": 5,\n  \"categoria\": \"Accesorios\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_productos}}/productos",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos"]
+            },
+            "description": "Crear producto con stock limitado (< 10) - Futuro candidato para alertas de inventario"
+          }
+        },
+        {
+          "name": "2.4 📋 Listar Productos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Mostrar resumen de productos",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Productos listados exitosamente');",
+                  "    console.log('Total productos:', response.productos.length);",
+                  "    ",
+                  "    response.productos.forEach((producto, index) => {",
+                  "        console.log(`${index + 1}. ${producto.codigo} - ${producto.nombre} ($${producto.precio}) - Stock: ${producto.stock}`);",
+                  "    });",
+                  "    ",
+                  "    if (response.lastEvaluatedKey) {",
+                  "        console.log('Hay más productos disponibles (paginación)');",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error listando productos - Código:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_productos}}/productos?limit=20",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Límite de productos por página"
+                }
+              ]
+            },
+            "description": "Listar productos con paginación"
+          }
+        },
+        {
+          "name": "2.5 🔍 Buscar Producto por Código",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Mostrar detalles del producto encontrado",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Producto encontrado:');",
+                  "    console.log('Código:', response.codigo);",
+                  "    console.log('Nombre:', response.nombre);",
+                  "    console.log('Descripción:', response.descripcion);",
+                  "    console.log('Precio: $' + response.precio);",
+                  "    console.log('Stock actual:', response.stock);",
+                  "    console.log('Categoría:', response.categoria);",
+                  "    console.log('Creado:', response.created_at);",
+                  "    console.log('Actualizado:', response.updated_at);",
+                  "} else if (pm.response.code === 404) {",
+                  "    console.log('❌ Producto no encontrado');",
+                  "} else {",
+                  "    console.log('❌ Error buscando producto - Código:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_productos}}/productos/TEST001",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos", "TEST001"]
+            },
+            "description": "Buscar producto específico por código"
+          }
+        },
+        {
+          "name": "2.6 ✏️ Modificar Producto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar modificación exitosa",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Producto modificado exitosamente');",
+                  "    console.log('Código:', response.codigo);",
+                  "    console.log('Precio actualizado: $' + response.precio);",
+                  "    console.log('Stock actualizado:', response.stock);",
+                  "    console.log('Descripción actualizada:', response.descripcion);",
+                  "} else {",
+                  "    console.log('❌ Error modificando producto - Código:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 89.99,\n  \"stock\": 95,\n  \"descripcion\": \"Producto para testing de la API - PRECIO ACTUALIZADO - OFERTA ESPECIAL\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_productos}}/productos/TEST001",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos", "TEST001"]
+            },
+            "description": "Modificar precio, stock y descripción del producto TEST001"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. 🛒 API COMPRAS",
+      "item": [
+        {
+          "name": "3.1 🛒 Compra Simple",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar ID de compra y mostrar detalles",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    if (response.compra) {",
+                  "        pm.collectionVariables.set('last_compra_id', response.compra.compra_id);",
+                  "        console.log('✅ Compra simple creada exitosamente');",
+                  "        console.log('Compra ID:', response.compra.compra_id);",
+                  "        console.log('Total: $' + response.compra.total);",
+                  "        console.log('Estado:', response.compra.estado);",
+                  "        console.log('Productos:');",
+                  "        response.compra.productos.forEach(p => {",
+                  "            console.log(`  - ${p.codigo}: ${p.cantidad} x $${p.precio_unitario} = $${p.subtotal}`);",
+                  "        });",
+                  "    } else {",
+                  "        console.log('❌ Estructura de respuesta inesperada');",
+                  "        console.log('Respuesta completa:', JSON.stringify(response, null, 2));",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error en compra simple - Código:', pm.response.code);",
+                  "    console.log('Respuesta:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productos\": [\n    {\n      \"codigo\": \"TEST001\",\n      \"cantidad\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url_compras}}/compras",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras"]
+            },
+            "description": "Compra simple de 2 unidades del producto básico"
+          }
+        },
+        {
+          "name": "3.2 🛒 Compra Múltiple",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar ID y mostrar detalles de compra múltiple",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    if (response.compra) {",
+                  "        pm.collectionVariables.set('last_compra_id', response.compra.compra_id);",
+                  "        console.log('✅ Compra múltiple creada exitosamente');",
+                  "        console.log('Compra ID:', response.compra.compra_id);",
+                  "        console.log('Total: $' + response.compra.total);",
+                  "        console.log('Número de productos diferentes:', response.compra.productos.length);",
+                  "        console.log('Estado:', response.compra.estado);",
+                  "        console.log('Detalles:');",
+                  "        response.compra.productos.forEach(p => {",
+                  "            console.log(`  - ${p.codigo}: ${p.cantidad} x $${p.precio_unitario} = $${p.subtotal}`);",
+                  "        });",
+                  "    } else {",
+                  "        console.log('❌ Estructura de respuesta inesperada');",
+                  "        console.log('Respuesta completa:', JSON.stringify(response, null, 2));",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error en compra múltiple - Código:', pm.response.code);",
+                  "    console.log('Respuesta:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productos\": [\n    {\n      \"codigo\": \"TEST001\",\n      \"cantidad\": 1\n    },\n    {\n      \"codigo\": \"TEST003\",\n      \"cantidad\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url_compras}}/compras",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras"]
+            },
+            "description": "Compra múltiple con diferentes productos"
+          }
+        },
+        {
+          "name": "3.3 💎 Compra Premium",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar ID y nota especial para Step Functions",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    if (response.compra) {",
+                  "        pm.collectionVariables.set('last_compra_id', response.compra.compra_id);",
+                  "        console.log('✅ Compra premium creada exitosamente');",
+                  "        console.log('Compra ID:', response.compra.compra_id);",
+                  "        console.log('Total: $' + response.compra.total + ' (> $500)');",
+                  "        console.log('Estado:', response.compra.estado);",
+                  "        console.log('');",
+                  "        console.log('🔥 IMPORTANTE: Esta compra sería procesada por Step Functions');",
+                  "        console.log('   - Requeriría aprobación humana por monto > $500');",
+                  "        console.log('   - Procesamiento asíncrono con workflow');",
+                  "        console.log('   - Envío de notificaciones automáticas');",
+                  "    } else {",
+                  "        console.log('❌ Estructura de respuesta inesperada');",
+                  "        console.log('Respuesta completa:', JSON.stringify(response, null, 2));",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error en compra premium - Código:', pm.response.code);",
+                  "    console.log('Respuesta:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productos\": [\n    {\n      \"codigo\": \"TEST002\",\n      \"cantidad\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url_compras}}/compras",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras"]
+            },
+            "description": "Compra de producto premium (>$500) - Futuro candidato para Step Functions con aprobación"
+          }
+        },
+        {
+          "name": "3.4 ⚠️ Compra Stock Bajo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Guardar ID y nota sobre inventario",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    if (response.compra) {",
+                  "        pm.collectionVariables.set('last_compra_id', response.compra.compra_id);",
+                  "        console.log('✅ Compra con impacto en inventario creada');",
+                  "        console.log('Compra ID:', response.compra.compra_id);",
+                  "        console.log('Total: $' + response.compra.total);",
+                  "        console.log('Estado:', response.compra.estado);",
+                  "        console.log('');",
+                  "        console.log('⚠️ IMPORTANTE: Esta compra afecta inventario');",
+                  "        console.log('   - Producto TEST003 quedaría con stock muy bajo');",
+                  "        console.log('   - Triggearía InventoryAlertWorkflow en Step Functions');",
+                  "        console.log('   - Alertas automáticas de restock');",
+                  "    } else {",
+                  "        console.log('❌ Estructura de respuesta inesperada');",
+                  "        console.log('Respuesta completa:', JSON.stringify(response, null, 2));",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error en compra stock bajo - Código:', pm.response.code);",
+                  "    console.log('Respuesta:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productos\": [\n    {\n      \"codigo\": \"TEST003\",\n      \"cantidad\": 3\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url_compras}}/compras",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras"]
+            },
+            "description": "Compra que deja producto con stock muy bajo - Futuro candidato para alertas de inventario"
+          }
+        },
+        {
+          "name": "3.5 📊 Listar Compras del Usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Mostrar resumen de todas las compras",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    console.log('✅ Compras del usuario listadas exitosamente');",
+                  "    console.log('Total compras realizadas:', response.compras.length);",
+                  "    ",
+                  "    let totalGastado = 0;",
+                  "    response.compras.forEach((compra, index) => {",
+                  "        console.log(`${index + 1}. ID: ${compra.compra_id} - Total: $${compra.total} - Estado: ${compra.estado}`);",
+                  "        totalGastado += parseFloat(compra.total);",
+                  "    });",
+                  "    ",
+                  "    console.log('');",
+                  "    console.log('💰 Total gastado: $' + totalGastado.toFixed(2));",
+                  "    ",
+                  "    if (response.lastEvaluatedKey) {",
+                  "        console.log('Hay más compras disponibles (paginación)');",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ Error listando compras - Código:', pm.response.code);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_compras}}/compras?limit=10",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Límite de compras por página"
+                }
+              ]
+            },
+            "description": "Listar todas las compras del usuario autenticado con resumen financiero"
+          }
+        },
+        {
+          "name": "3.6 🔍 Obtener Compra Específica",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Mostrar detalles completos de la compra",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    if (response.compra) {",
+                  "        console.log('✅ Detalles de compra obtenidos exitosamente');",
+                  "        console.log('Compra ID:', response.compra.compra_id);",
+                  "        console.log('Estado:', response.compra.estado);",
+                  "        console.log('Total: $' + response.compra.total);",
+                  "        console.log('Fecha:', response.compra.created_at);",
+                  "        console.log('Usuario:', response.compra.user_id);",
+                  "        console.log('Tenant:', response.compra.tenant_id);",
+                  "        console.log('');",
+                  "        ",
+                  "        if (response.compra.productos && response.compra.productos.length > 0) {",
+                  "            console.log('Productos comprados:');",
+                  "            response.compra.productos.forEach(p => {",
+                  "                console.log(`  - ${p.codigo}: ${p.cantidad} x $${p.precio_unitario} = $${p.subtotal}`);",
+                  "            });",
+                  "        } else {",
+                  "            console.log('No hay productos en esta compra.');",
+                  "        }",
+                  "    } else {",
+                  "        console.log('❌ Estructura de respuesta inesperada');",
+                  "        console.log('Respuesta completa:', JSON.stringify(response, null, 2));",
+                  "    }",
+                  "} else if (pm.response.code === 404) {",
+                  "    console.log('❌ Compra no encontrada');",
+                  "} else {",
+                  "    console.log('❌ Error obteniendo compra - Código:', pm.response.code);",
+                  "    console.log('Respuesta:', pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_compras}}/compras/{{last_compra_id}}",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras", "{{last_compra_id}}"]
+            },
+            "description": "Obtener detalles completos de la última compra creada"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. ❌ TESTING DE ERRORES",
+      "item": [
+        {
+          "name": "4.1 🚫 Sin Token de Autorización",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar error de autorización",
+                  "if (pm.response.code === 401) {",
+                  "    console.log('✅ Error 401 correcto: Sin autorización');",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else {",
+                  "    console.log('❌ Error inesperado - Código:', pm.response.code);",
+                  "    console.log('Se esperaba 401 Unauthorized');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url_productos}}/productos",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos"]
+            },
+            "description": "Intentar acceder a productos sin token - Debe devolver 401 Unauthorized"
+          }
+        },
+        {
+          "name": "4.2 🚫 Login con Credenciales Incorrectas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar error de credenciales",
+                  "if (pm.response.code === 401) {",
+                  "    console.log('✅ Error 401 correcto: Credenciales inválidas');",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else {",
+                  "    console.log('❌ Error inesperado - Código:', pm.response.code);",
+                  "    console.log('Se esperaba 401 Unauthorized');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"passwordincorrecto\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_usuarios}}/usuarios/login",
+              "host": ["{{base_url_usuarios}}"],
+              "path": ["usuarios", "login"]
+            },
+            "description": "Intentar login con password incorrecto - Debe devolver 401"
+          }
+        },
+        {
+          "name": "4.3 🚫 Crear Producto Duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar error de duplicado",
+                  "if (pm.response.code === 409) {",
+                  "    console.log('✅ Error 409 correcto: Producto duplicado');",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else if (pm.response.code === 400) {",
+                  "    console.log('✅ Error 400 correcto: Código ya existe');",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else {",
+                  "    console.log('❌ Error inesperado - Código:', pm.response.code);",
+                  "    console.log('Se esperaba 409 Conflict o 400 Bad Request');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"TEST001\",\n  \"nombre\": \"Producto Duplicado\",\n  \"descripcion\": \"Intentando usar código existente\",\n  \"precio\": 50.00,\n  \"stock\": 10,\n  \"categoria\": \"Error\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_productos}}/productos",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos"]
+            },
+            "description": "Intentar crear producto con código existente - Debe devolver 409 Conflict"
+          }
+        },
+        {
+          "name": "4.4 🚫 Buscar Producto Inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar error de no encontrado",
+                  "if (pm.response.code === 404) {",
+                  "    console.log('✅ Error 404 correcto: Producto no encontrado');",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else {",
+                  "    console.log('❌ Error inesperado - Código:', pm.response.code);",
+                  "    console.log('Se esperaba 404 Not Found');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_productos}}/productos/NOEXISTE",
+              "host": ["{{base_url_productos}}"],
+              "path": ["productos", "NOEXISTE"]
+            },
+            "description": "Buscar producto que no existe - Debe devolver 404 Not Found"
+          }
+        },
+        {
+          "name": "4.5 🚫 Compra con Stock Insuficiente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar error de stock",
+                  "if (pm.response.code === 400) {",
+                  "    console.log('✅ Error 400 correcto: Stock insuficiente');",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else {",
+                  "    console.log('❌ Error inesperado - Código:', pm.response.code);",
+                  "    console.log('Se esperaba 400 Bad Request por stock insuficiente');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productos\": [\n    {\n      \"codigo\": \"TEST003\",\n      \"cantidad\": 100\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url_compras}}/compras",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras"]
+            },
+            "description": "Intentar comprar más cantidad que el stock disponible - Debe devolver error 400"
+          }
+        },
+        {
+          "name": "4.6 🚫 Compra de Producto Inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar error de producto inexistente",
+                  "if (pm.response.code === 400 || pm.response.code === 404) {",
+                  "    console.log('✅ Error correcto: Producto inexistente en compra');",
+                  "    console.log('Código:', pm.response.code);",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else {",
+                  "    console.log('❌ Error inesperado - Código:', pm.response.code);",
+                  "    console.log('Se esperaba 400 Bad Request o 404 Not Found');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productos\": [\n    {\n      \"codigo\": \"NOEXISTE\",\n      \"cantidad\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url_compras}}/compras",
+              "host": ["{{base_url_compras}}"],
+              "path": ["compras"]
+            },
+            "description": "Intentar comprar producto que no existe - Debe devolver error 400 o 404"
+          }
+        },
+        {
+          "name": "4.7 🚫 Crear Usuario Duplicado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Validar error de usuario duplicado",
+                  "if (pm.response.code === 409 || pm.response.code === 400) {",
+                  "    console.log('✅ Error correcto: Usuario ya existe');",
+                  "    console.log('Código:', pm.response.code);",
+                  "    console.log('Mensaje:', pm.response.text());",
+                  "} else {",
+                  "    console.log('❌ Error inesperado - Código:', pm.response.code);",
+                  "    console.log('Se esperaba 409 Conflict o 400 Bad Request');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"{{test_user_password}}\",\n  \"nombre\": \"Usuario Duplicado\",\n  \"tenant_id\": \"{{tenant_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_usuarios}}/usuarios/registro",
+              "host": ["{{base_url_usuarios}}"],
+              "path": ["usuarios", "registro"]
+            },
+            "description": "Intentar crear usuario con email ya existente - Debe devolver error 409"
+          }
+        }
+      ]
+    }
+  ]
+}
