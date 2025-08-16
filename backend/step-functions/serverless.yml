@@ -1,5 +1,7 @@
 org: kartago
 service: step-functions-workflows
+  
+useDotenv: true
 
 provider:
   name: aws
