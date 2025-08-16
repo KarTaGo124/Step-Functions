@@ -76,7 +76,7 @@ stepFunctions:
         States:
           ValidateOrder:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-validateOrder
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-validateOrder
             Next: CheckInventory
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -89,7 +89,7 @@ stepFunctions:
 
           CheckInventory:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-checkInventory
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-checkInventory
             Next: CheckOrderAmount
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -111,7 +111,7 @@ stepFunctions:
             Type: Task
             Resource: arn:aws:states:::lambda:invoke.waitForTaskToken
             Parameters:
-              FunctionName: ${self:service}-${self:provider.stage}-sendApprovalNotification
+              FunctionName: step-functions-workflows-dev-sendApprovalNotification
               Payload:
                 compra_id.$: "$.compra_id"
                 total.$: "$.total"
@@ -128,7 +128,7 @@ stepFunctions:
 
           ProcessPayment:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-processPayment
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-processPayment
             Next: GenerateInvoice
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -140,12 +140,12 @@ stepFunctions:
 
           GenerateInvoice:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-generateInvoice
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-generateInvoice
             Next: UpdateInventory
 
           UpdateInventory:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-updateInventory
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-updateInventory
             Next: SendNotification
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -159,7 +159,7 @@ stepFunctions:
 
           SendNotification:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-sendNotification
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-sendNotification
             Next: OrderCompleted
 
           OrderCompleted:
@@ -168,7 +168,7 @@ stepFunctions:
 
           InventoryUpdateFailed:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-sendNotification
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-sendNotification
             Parameters:
               notification_type: "inventory_failed"
               error_message: "Stock insuficiente durante la actualización. El pago se procesó correctamente, pero otro cliente compró el producto."
@@ -210,7 +210,7 @@ stepFunctions:
         States:
           DetectLowStock:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-detectLowStock
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-detectLowStock
             Next: CheckIfRestockNeeded
             Catch:
               - ErrorEquals: ["States.ALL"]
@@ -228,7 +228,7 @@ stepFunctions:
             Type: Task
             Resource: arn:aws:states:::lambda:invoke.waitForTaskToken
             Parameters:
-              FunctionName: ${self:service}-${self:provider.stage}-sendStockAlert
+              FunctionName: step-functions-workflows-dev-sendStockAlert
               Payload:
                 tenant_id.$: "$.tenant_id"
                 low_stock_alert.$: "$.low_stock_alert"
@@ -244,7 +244,7 @@ stepFunctions:
 
           ProcessRestock:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-processRestock
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-processRestock
             Parameters:
               tenant_id.$: "$.tenant_id"
               producto_codigo.$: "$.low_stock_alert.codigo"
@@ -257,7 +257,7 @@ stepFunctions:
 
           SendRestockNotification:
             Type: Task
-            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-sendNotification
+            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-sendNotification
             Next: InventoryUpdated
 
           InventoryUpdated:
