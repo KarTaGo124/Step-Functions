@@ -313,7 +313,7 @@ resources:
           detail-type: ["Nueva Compra Creada"]
         State: ENABLED
         Targets:
-          - Arn: !Ref OrderProcessingWorkflow
+          - Arn: arn:aws:states:us-east-1:721114448578:stateMachine:OrderProcessingWorkflow-dev
             Id: "OrderProcessingTarget"
             RoleArn: !GetAtt StepFunctionRole.Arn
             DeadLetterConfig:
@@ -329,7 +329,7 @@ resources:
           detail-type: ["Stock Bajo Detectado"]
         State: ENABLED
         Targets:
-          - Arn: !Ref InventoryManagementWorkflow
+          - Arn: arn:aws:states:us-east-1:721114448578:stateMachine:InventoryManagementWorkflow-dev
             Id: "InventoryManagementTarget"
             RoleArn: !GetAtt StepFunctionRole.Arn
             DeadLetterConfig:
@@ -355,8 +355,8 @@ resources:
                   Action:
                     - states:StartExecution
                   Resource: 
-                    - !Ref OrderProcessingWorkflow
-                    - !Ref InventoryManagementWorkflow
+                    - arn:aws:states:us-east-1:721114448578:stateMachine:OrderProcessingWorkflow-dev
+                    - arn:aws:states:us-east-1:721114448578:stateMachine:InventoryManagementWorkflow-dev
                 - Effect: Allow
                   Action:
                     - sqs:SendMessage
