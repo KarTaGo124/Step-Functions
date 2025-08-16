@@ -66,6 +66,8 @@ functions:
   # Common Handlers
   sendNotification:
     handler: common-handlers/sendNotification.handler
+  handleOrderError:
+    handler: common-handlers/handleOrderError.handler
 
 stepFunctions:
   stateMachines:
@@ -193,9 +195,9 @@ stepFunctions:
             Cause: "La aprobación no se recibió en 24 horas"
 
           OrderFailed:
-            Type: Fail
-            Error: "OrderProcessingFailed"
-            Cause: "Error durante el procesamiento del pedido"
+            Type: Task
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-handleOrderError
+            End: true
 
     # Workflow 2 - Gestión de Inventario
     InventoryManagementWorkflow:

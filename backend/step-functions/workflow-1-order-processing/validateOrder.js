@@ -7,7 +7,9 @@ export async function handler(event) {
   console.log('ValidateOrder input:', JSON.stringify(event, null, 2));
   
   try {
-    const { compra_id, tenant_id, user_id, total, productos } = event;
+    // Extraer datos del detail del evento de EventBridge
+    const eventDetail = event.detail || event;
+    const { compra_id, tenant_id, user_id, total, productos } = eventDetail;
     
     if (!compra_id || !tenant_id || !user_id) {
       throw new Error('Faltan campos requeridos: compra_id, tenant_id, user_id');
@@ -55,7 +57,11 @@ export async function handler(event) {
     console.log(`✅ Compra ${compra_id} validada exitosamente`);
     
     return {
-      ...event,
+      compra_id,
+      tenant_id,
+      user_id,
+      total,
+      productos,
       validation_status: 'success',
       validation_timestamp: new Date().toISOString(),
       compra_details: compra
@@ -64,13 +70,16 @@ export async function handler(event) {
   } catch (error) {
     console.error('❌ Error validating order:', error);
     
-    if (event.compra_id && event.tenant_id) {
+    const eventDetail = event.detail || event;
+    const { compra_id, tenant_id } = eventDetail;
+    
+    if (compra_id && tenant_id) {
       try {
         await dynamodb.update({
           TableName: COMPRAS_TABLE,
           Key: {
-            tenant_id: event.tenant_id,
-            compra_id: event.compra_id
+            tenant_id: tenant_id,
+            compra_id: compra_id
           },
           UpdateExpression: 'SET estado = :estado, error_message = :error, updated_at = :updated_at',
           ExpressionAttributeValues: {

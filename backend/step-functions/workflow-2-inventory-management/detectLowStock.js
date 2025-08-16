@@ -8,15 +8,20 @@ export async function handler(event) {
   console.log('DetectLowStock input:', JSON.stringify(event, null, 2));
   
   try {
-    const { tenant_id, codigo, stock } = event;
-    const threshold = event.threshold || 10;
+    // Extraer datos del detail del evento de EventBridge o del evento directo
+    const eventDetail = event.detail || event;
+    const { tenant_id, codigo, stock } = eventDetail;
+    const threshold = eventDetail.threshold || 10;
     
     console.log(`🔍 Verificando stock para producto ${codigo}: ${stock} unidades (umbral: ${threshold})`);
     
     if (stock >= threshold) {
       console.log(`✅ Stock suficiente para ${codigo}: ${stock} >= ${threshold}`);
       return {
-        ...event,
+        tenant_id,
+        codigo,
+        stock,
+        threshold,
         stock_status: 'sufficient',
         requires_restock: false,
         timestamp: new Date().toISOString()
@@ -49,7 +54,10 @@ export async function handler(event) {
     };
     
     return {
-      ...event,
+      tenant_id,
+      codigo,
+      stock,
+      threshold,
       stock_status: 'low',
       requires_restock: true,
       low_stock_alert: lowStockAlert,
