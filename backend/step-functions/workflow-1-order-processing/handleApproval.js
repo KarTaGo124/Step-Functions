@@ -89,17 +89,32 @@ export async function handler(event) {
     
     const finalTaskToken = task_token || await getTaskTokenFromExecution(executionArn);
     
+    const compraData = await dynamodb.get({
+      TableName: COMPRAS_TABLE,
+      Key: {
+        tenant_id: tenant_id,
+        compra_id: compra_id
+      }
+    }).promise();
+    
     if (decision === 'approve') {
       console.log('✅ Aprobando compra y continuando workflow...');
       
+      const originalWorkflowData = {
+        compra_id: compra_id,
+        tenant_id: tenant_id,
+        user_id: compraData.Item?.user_id,
+        total: compraData.Item?.total,
+        productos: compraData.Item?.productos,
+        approved: true,
+        approver: approver,
+        approval_timestamp: new Date().toISOString(),
+        reason: reason
+      };
+      
       await stepfunctions.sendTaskSuccess({
         taskToken: finalTaskToken,
-        output: JSON.stringify({
-          approved: true,
-          approver: approver,
-          approval_timestamp: new Date().toISOString(),
-          reason: reason
-        })
+        output: JSON.stringify(originalWorkflowData)
       }).promise();
       
     } else {

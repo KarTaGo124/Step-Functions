@@ -100,18 +100,35 @@ export async function handler(event) {
     
     const finalTaskToken = task_token || await getTaskTokenFromExecution(executionArn);
     
+    const productData = await dynamodb.get({
+      TableName: PRODUCTOS_TABLE,
+      Key: {
+        tenant_id: tenant_id,
+        codigo: producto_codigo
+      }
+    }).promise();
+    
     if (decision === 'approve_restock') {
       console.log(`✅ Aprobando restock de ${restock_quantity} unidades...`);
       
+      const originalWorkflowData = {
+        tenant_id: tenant_id,
+        producto_codigo: producto_codigo,
+        restock_quantity: restock_quantity,
+        supervisor: supervisor,
+        approved: true,
+        decision: decision,
+        approval_timestamp: new Date().toISOString(),
+        low_stock_alert: productData.Item?.stock_alert || {
+          codigo: producto_codigo,
+          severity: 'medium',
+          current_stock: productData.Item?.stock || 0
+        }
+      };
+      
       await stepfunctions.sendTaskSuccess({
         taskToken: finalTaskToken,
-        output: JSON.stringify({
-          approved: true,
-          decision: decision,
-          restock_quantity: restock_quantity,
-          supervisor: supervisor,
-          approval_timestamp: new Date().toISOString()
-        })
+        output: JSON.stringify(originalWorkflowData)
       }).promise();
       
     } else {
