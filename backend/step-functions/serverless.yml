@@ -1,0 +1,379 @@
+org: kartago
+service: step-functions-workflows
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  timeout: 10
+  memorySize: 1024
+  iam:
+    role: arn:aws:iam::721114448578:role/LabRole
+  environment:
+    COMPRAS_TABLE: compras-${self:provider.stage}
+    PRODUCTOS_TABLE: productos-${self:provider.stage}
+    STAGE: ${self:provider.stage}
+
+functions:
+  # Workflow 1 - Procesamiento Inteligente de Pedidos
+  validateOrder:
+    handler: workflow-1-order-processing/validateOrder.handler
+    
+  checkInventory:
+    handler: workflow-1-order-processing/checkInventory.handler
+    
+  processPayment:
+    handler: workflow-1-order-processing/processPayment.handler
+    
+  generateInvoice:
+    handler: workflow-1-order-processing/generateInvoice.handler
+    
+  updateInventory:
+    handler: workflow-1-order-processing/updateInventory.handler
+    
+  sendApprovalNotification:
+    handler: workflow-1-order-processing/sendApprovalNotification.handler
+    
+  handleApproval:
+    handler: workflow-1-order-processing/handleApproval.handler
+    events:
+      - http:
+          path: /approval/{execution_arn}
+          method: post
+          cors: true
+          
+  # Workflow 2 - Gestión de Inventario
+  detectLowStock:
+    handler: workflow-2-inventory-management/detectLowStock.handler
+    
+  sendStockAlert:
+    handler: workflow-2-inventory-management/sendStockAlert.handler
+    
+  handleRestockDecision:
+    handler: workflow-2-inventory-management/handleRestockDecision.handler
+    events:
+      - http:
+          path: /restock/{execution_arn}
+          method: post
+          cors: true
+          
+  processRestock:
+    handler: workflow-2-inventory-management/processRestock.handler
+          
+  # Common Handlers
+  sendNotification:
+    handler: common-handlers/sendNotification.handler
+
+stepFunctions:
+  stateMachines:
+    # Workflow 1 - Procesamiento Inteligente de Pedidos
+    OrderProcessingWorkflow:
+      name: OrderProcessingWorkflow-${self:provider.stage}
+      definition:
+        Comment: "Workflow completo para procesamiento inteligente de pedidos con aprobaciones humanas"
+        StartAt: ValidateOrder
+        States:
+          ValidateOrder:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-validateOrder
+            Next: CheckInventory
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 2
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: OrderFailed
+
+          CheckInventory:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-checkInventory
+            Next: CheckOrderAmount
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 2
+                MaxAttempts: 3
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: OrderFailed
+
+          CheckOrderAmount:
+            Type: Choice
+            Choices:
+              - Variable: "$.total"
+                NumericGreaterThan: 500
+                Next: RequireApproval
+            Default: ProcessPayment
+
+          RequireApproval:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke.waitForTaskToken
+            Parameters:
+              FunctionName: ${self:service}-${self:provider.stage}-sendApprovalNotification
+              Payload:
+                compra_id.$: "$.compra_id"
+                total.$: "$.total"
+                user_id.$: "$.user_id"
+                tenant_id.$: "$.tenant_id"
+                taskToken.$: "$$.Task.Token"
+            TimeoutSeconds: 86400
+            Next: ProcessPayment
+            Catch:
+              - ErrorEquals: ["States.Timeout"]
+                Next: ApprovalTimeout
+              - ErrorEquals: ["States.ALL"]
+                Next: OrderFailed
+
+          ProcessPayment:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-processPayment
+            Next: GenerateInvoice
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 2
+                MaxAttempts: 3
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: OrderFailed
+
+          GenerateInvoice:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-generateInvoice
+            Next: UpdateInventory
+
+          UpdateInventory:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-updateInventory
+            Next: SendNotification
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 5
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: InventoryUpdateFailed
+                ResultPath: "$.inventory_error"
+
+          SendNotification:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-sendNotification
+            Next: OrderCompleted
+
+          OrderCompleted:
+            Type: Succeed
+            Comment: "Pedido procesado exitosamente"
+
+          InventoryUpdateFailed:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-sendNotification
+            Parameters:
+              notification_type: "inventory_failed"
+              error_message: "Stock insuficiente durante la actualización. El pago se procesó correctamente, pero otro cliente compró el producto."
+              compra_id.$: "$.compra_id"
+              tenant_id.$: "$.tenant_id"
+              user_id.$: "$.user_id"
+              total.$: "$.total"
+              inventory_error.$: "$.inventory_error"
+            Next: RefundRequired
+
+          RefundRequired:
+            Type: Fail
+            Error: "InventoryRaceCondition"
+            Cause: "Stock insuficiente durante la actualización - Se requiere reembolso manual"
+
+          ApprovalTimeout:
+            Type: Fail
+            Error: "ApprovalTimeout"
+            Cause: "La aprobación no se recibió en 24 horas"
+
+          OrderFailed:
+            Type: Fail
+            Error: "OrderProcessingFailed"
+            Cause: "Error durante el procesamiento del pedido"
+
+      events:
+        - eventBridge:
+            eventBus: default
+            pattern:
+              source: ["ecommerce.compras"]
+              detail-type: ["Nueva Compra Creada"]
+
+    # Workflow 2 - Gestión de Inventario
+    InventoryManagementWorkflow:
+      name: InventoryManagementWorkflow-${self:provider.stage}
+      definition:
+        Comment: "Workflow para gestión inteligente de inventario con aprobaciones de restock"
+        StartAt: DetectLowStock
+        States:
+          DetectLowStock:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-detectLowStock
+            Next: CheckIfRestockNeeded
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: InventoryCheckFailed
+
+          CheckIfRestockNeeded:
+            Type: Choice
+            Choices:
+              - Variable: "$.requires_restock"
+                BooleanEquals: true
+                Next: SendStockAlert
+            Default: NoRestockNeeded
+
+          SendStockAlert:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke.waitForTaskToken
+            Parameters:
+              FunctionName: ${self:service}-${self:provider.stage}-sendStockAlert
+              Payload:
+                tenant_id.$: "$.tenant_id"
+                low_stock_alert.$: "$.low_stock_alert"
+                severity.$: "$.severity"
+                taskToken.$: "$$.Task.Token"
+            TimeoutSeconds: 604800
+            Next: ProcessRestock
+            Catch:
+              - ErrorEquals: ["States.Timeout"]
+                Next: RestockTimeout
+              - ErrorEquals: ["States.ALL"]
+                Next: AlertFailed
+
+          ProcessRestock:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-processRestock
+            Parameters:
+              tenant_id.$: "$.tenant_id"
+              producto_codigo.$: "$.low_stock_alert.codigo"
+              restock_quantity.$: "$.restock_quantity"
+              supervisor.$: "$.supervisor"
+            Next: SendRestockNotification
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: RestockFailed
+
+          SendRestockNotification:
+            Type: Task
+            Resource: arn:aws:lambda:${aws:region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-sendNotification
+            Next: InventoryUpdated
+
+          InventoryUpdated:
+            Type: Succeed
+            Comment: "Inventario actualizado exitosamente"
+
+          NoRestockNeeded:
+            Type: Succeed
+            Comment: "Stock suficiente, no se requiere restock"
+
+          RestockTimeout:
+            Type: Fail
+            Error: "RestockTimeout"
+            Cause: "La decisión de restock no se recibió en 7 días"
+
+          AlertFailed:
+            Type: Fail
+            Error: "StockAlertFailed"
+            Cause: "Error enviando alerta de stock bajo"
+
+          RestockFailed:
+            Type: Fail
+            Error: "RestockProcessFailed"
+            Cause: "Error procesando el restock"
+
+          InventoryCheckFailed:
+            Type: Fail
+            Error: "InventoryCheckFailed"
+            Cause: "Error verificando niveles de inventario"
+
+      events:
+        - eventBridge:
+            eventBus: default
+            pattern:
+              source: ["ecommerce.inventario"]
+              detail-type: ["Stock Bajo Detectado"]
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-step-functions
+
+resources:
+  Resources:
+    # Dead Letter Queue para eventos fallidos
+    OrderProcessingDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: OrderProcessingDLQ-${self:provider.stage}
+        MessageRetentionPeriod: 1209600  # 14 días
+        VisibilityTimeoutSeconds: 60
+
+    InventoryManagementDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: InventoryManagementDLQ-${self:provider.stage}
+        MessageRetentionPeriod: 1209600  # 14 días
+        VisibilityTimeoutSeconds: 60
+
+    # EventBridge Rules para triggear Step Functions
+    OrderProcessingRule:
+      Type: AWS::Events::Rule
+      Properties:
+        Name: OrderProcessingRule-${self:provider.stage}
+        Description: "Trigger Order Processing Workflow"
+        EventPattern:
+          source: ["ecommerce.compras"]
+          detail-type: ["Nueva Compra Creada"]
+        State: ENABLED
+        Targets:
+          - Arn: !Ref OrderProcessingWorkflow
+            Id: "OrderProcessingTarget"
+            RoleArn: !GetAtt StepFunctionRole.Arn
+            DeadLetterConfig:
+              Arn: !GetAtt OrderProcessingDLQ.Arn
+
+    InventoryManagementRule:
+      Type: AWS::Events::Rule
+      Properties:
+        Name: InventoryManagementRule-${self:provider.stage}
+        Description: "Trigger Inventory Management Workflow"
+        EventPattern:
+          source: ["ecommerce.inventario"]
+          detail-type: ["Stock Bajo Detectado"]
+        State: ENABLED
+        Targets:
+          - Arn: !Ref InventoryManagementWorkflow
+            Id: "InventoryManagementTarget"
+            RoleArn: !GetAtt StepFunctionRole.Arn
+            DeadLetterConfig:
+              Arn: !GetAtt InventoryManagementDLQ.Arn
+
+    # IAM Role para EventBridge → Step Functions
+    StepFunctionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: events.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: StepFunctionExecutionPolicy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - states:StartExecution
+                  Resource: 
+                    - !Ref OrderProcessingWorkflow
+                    - !Ref InventoryManagementWorkflow
+                - Effect: Allow
+                  Action:
+                    - sqs:SendMessage
+                  Resource:
+                    - !GetAtt OrderProcessingDLQ.Arn
+                    - !GetAtt InventoryManagementDLQ.Arn

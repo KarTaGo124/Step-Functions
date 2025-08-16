@@ -1,0 +1,24 @@
+{
+  "name": "step-functions-workflows",
+  "version": "1.0.0",
+  "description": "Step Functions workflows para proyecto de e-commerce",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:test": "serverless deploy --stage test", 
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove:dev": "serverless remove --stage dev",
+    "logs": "serverless logs -f",
+    "invoke": "serverless invoke -f"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1691.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-step-functions": "^3.21.0",
+    "serverless-dotenv-plugin": "^6.0.0"
+  }
+}

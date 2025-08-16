@@ -167,7 +167,7 @@ export async function registrarCompra(event) {
         ]
       }).promise();
       
-      console.log(`Evento enviado a EventBridge para compra ${compraId}`);
+      console.log(`Evento "Nueva Compra Creada" enviado a EventBridge para compra ${compraId} (Total: $${totalCompra})`);
     } catch (error) {
       console.error('Error sending event to EventBridge:', error);
     }
