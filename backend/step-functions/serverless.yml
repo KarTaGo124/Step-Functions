@@ -315,7 +315,7 @@ resources:
         Targets:
           - Arn: arn:aws:states:us-east-1:721114448578:stateMachine:OrderProcessingWorkflow-dev
             Id: "OrderProcessingTarget"
-            RoleArn: !GetAtt StepFunctionRole.Arn
+            RoleArn: arn:aws:iam::721114448578:role/LabRole
             DeadLetterConfig:
               Arn: !GetAtt OrderProcessingDLQ.Arn
 
@@ -331,35 +331,7 @@ resources:
         Targets:
           - Arn: arn:aws:states:us-east-1:721114448578:stateMachine:InventoryManagementWorkflow-dev
             Id: "InventoryManagementTarget"
-            RoleArn: !GetAtt StepFunctionRole.Arn
+            RoleArn: arn:aws:iam::721114448578:role/LabRole
             DeadLetterConfig:
               Arn: !GetAtt InventoryManagementDLQ.Arn
 
-    # IAM Role para EventBridge → Step Functions
-    StepFunctionRole:
-      Type: AWS::IAM::Role
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service: events.amazonaws.com
-              Action: sts:AssumeRole
-        Policies:
-          - PolicyName: StepFunctionExecutionPolicy
-            PolicyDocument:
-              Version: '2012-10-17'
-              Statement:
-                - Effect: Allow
-                  Action:
-                    - states:StartExecution
-                  Resource: 
-                    - arn:aws:states:us-east-1:721114448578:stateMachine:OrderProcessingWorkflow-dev
-                    - arn:aws:states:us-east-1:721114448578:stateMachine:InventoryManagementWorkflow-dev
-                - Effect: Allow
-                  Action:
-                    - sqs:SendMessage
-                  Resource:
-                    - !GetAtt OrderProcessingDLQ.Arn
-                    - !GetAtt InventoryManagementDLQ.Arn
