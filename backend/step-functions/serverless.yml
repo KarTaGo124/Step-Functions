@@ -11,7 +11,7 @@ provider:
   timeout: 10
   memorySize: 1024
   iam:
-    role: arn:aws:iam::721114448578:role/LabRole
+    role: arn:aws:iam::501635705879:role/LabRole
   environment:
     COMPRAS_TABLE: compras-${self:provider.stage}
     PRODUCTOS_TABLE: productos-${self:provider.stage}
@@ -72,14 +72,14 @@ stepFunctions:
     # Workflow 1 - Procesamiento Inteligente de Pedidos
     OrderProcessingWorkflow:
       name: OrderProcessingWorkflow-${self:provider.stage}
-      role: arn:aws:iam::721114448578:role/LabRole
+      role: arn:aws:iam::501635705879:role/LabRole
       definition:
         Comment: "Workflow completo para procesamiento inteligente de pedidos con aprobaciones humanas"
         StartAt: ValidateOrder
         States:
           ValidateOrder:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-validateOrder
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-validateOrder
             Next: CheckInventory
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -92,7 +92,7 @@ stepFunctions:
 
           CheckInventory:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-checkInventory
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-checkInventory
             Next: CheckOrderAmount
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -131,7 +131,7 @@ stepFunctions:
 
           ProcessPayment:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-processPayment
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-processPayment
             Next: GenerateInvoice
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -143,12 +143,12 @@ stepFunctions:
 
           GenerateInvoice:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-generateInvoice
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-generateInvoice
             Next: UpdateInventory
 
           UpdateInventory:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-updateInventory
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-updateInventory
             Next: SendNotification
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
@@ -162,7 +162,7 @@ stepFunctions:
 
           SendNotification:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-sendNotification
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
             Next: OrderCompleted
 
           OrderCompleted:
@@ -171,7 +171,7 @@ stepFunctions:
 
           InventoryUpdateFailed:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-sendNotification
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
             Parameters:
               notification_type: "inventory_failed"
               error_message: "Stock insuficiente durante la actualización. El pago se procesó correctamente, pero otro cliente compró el producto."
@@ -200,14 +200,14 @@ stepFunctions:
     # Workflow 2 - Gestión de Inventario
     InventoryManagementWorkflow:
       name: InventoryManagementWorkflow-${self:provider.stage}
-      role: arn:aws:iam::721114448578:role/LabRole
+      role: arn:aws:iam::501635705879:role/LabRole
       definition:
         Comment: "Workflow para gestión inteligente de inventario con aprobaciones de restock"
         StartAt: DetectLowStock
         States:
           DetectLowStock:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-detectLowStock
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-detectLowStock
             Next: CheckIfRestockNeeded
             Catch:
               - ErrorEquals: ["States.ALL"]
@@ -241,7 +241,7 @@ stepFunctions:
 
           ProcessRestock:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-processRestock
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-processRestock
             Parameters:
               tenant_id.$: "$.tenant_id"
               producto_codigo.$: "$.low_stock_alert.codigo"
@@ -254,7 +254,7 @@ stepFunctions:
 
           SendRestockNotification:
             Type: Task
-            Resource: arn:aws:lambda:us-east-1:721114448578:function:step-functions-workflows-dev-sendNotification
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
             Next: InventoryUpdated
 
           InventoryUpdated:
@@ -317,9 +317,9 @@ resources:
           detail-type: ["Nueva Compra Creada"]
         State: ENABLED
         Targets:
-          - Arn: arn:aws:states:us-east-1:721114448578:stateMachine:OrderProcessingWorkflow-dev
+          - Arn: arn:aws:states:us-east-1:501635705879:stateMachine:OrderProcessingWorkflow-dev
             Id: "OrderProcessingTarget"
-            RoleArn: arn:aws:iam::721114448578:role/LabRole
+            RoleArn: arn:aws:iam::501635705879:role/LabRole
             DeadLetterConfig:
               Arn: !GetAtt OrderProcessingDLQ.Arn
 
@@ -333,9 +333,9 @@ resources:
           detail-type: ["Stock Bajo Detectado"]
         State: ENABLED
         Targets:
-          - Arn: arn:aws:states:us-east-1:721114448578:stateMachine:InventoryManagementWorkflow-dev
+          - Arn: arn:aws:states:us-east-1:501635705879:stateMachine:InventoryManagementWorkflow-dev
             Id: "InventoryManagementTarget"
-            RoleArn: arn:aws:iam::721114448578:role/LabRole
+            RoleArn: arn:aws:iam::501635705879:role/LabRole
             DeadLetterConfig:
               Arn: !GetAtt InventoryManagementDLQ.Arn
 
