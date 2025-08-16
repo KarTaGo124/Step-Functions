@@ -252,7 +252,7 @@ stepFunctions:
             Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-processRestock
             Parameters:
               tenant_id.$: "$.tenant_id"
-              producto_codigo.$: "$.low_stock_alert.codigo"
+              producto_codigo.$: "$.producto_codigo"
               restock_quantity.$: "$.restock_quantity"
               supervisor.$: "$.supervisor"
             Next: SendRestockNotification

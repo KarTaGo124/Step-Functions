@@ -7,7 +7,6 @@ export async function handler(event) {
   console.log('ValidateOrder input:', JSON.stringify(event, null, 2));
   
   try {
-    // Extraer datos del detail del evento de EventBridge
     const eventDetail = event.detail || event;
     const { compra_id, tenant_id, user_id, total, productos } = eventDetail;
     

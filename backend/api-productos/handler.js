@@ -286,7 +286,6 @@ export async function listarProductosStockBajo(event) {
     const queryParams = event?.queryStringParameters || {};
     const limit = Math.min(Number(queryParams.limit) || 50, 100);
 
-    // Escanear todos los productos del tenant y filtrar los que tienen stock_alert
     const params = {
       TableName: TABLE_NAME,
       FilterExpression: 'tenant_id = :tenant_id AND attribute_exists(stock_alert) AND attribute_exists(stock_alert.#status)',

@@ -13,7 +13,7 @@ const corsHeaders = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type,Authorization",
-  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS",
 };
 
 const validateToken = (event) => {
@@ -323,7 +323,6 @@ export async function listarComprasPendientes(event) {
   try {
     const userInfo = validateToken(event);
     
-    // Solo admins pueden ver compras pendientes de aprobación
     if (userInfo.role !== 'admin') {
       return {
         statusCode: 403,
@@ -335,7 +334,6 @@ export async function listarComprasPendientes(event) {
     const queryParams = event?.queryStringParameters || {};
     const limit = Math.min(Number(queryParams.limit) || 50, 100);
 
-    // Escanear compras con estado 'esperando_aprobacion'
     const params = {
       TableName: COMPRAS_TABLE,
       FilterExpression: 'tenant_id = :tenant_id AND estado = :estado',
@@ -366,6 +364,132 @@ export async function listarComprasPendientes(event) {
 
   } catch (error) {
     console.error('Error listing pending purchases:', error);
+    if (error.message.includes('Token')) {
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message }),
+      };
+    }
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Error interno del servidor' }),
+    };
+  }
+}
+
+export async function cancelarCompra(event) {
+  try {
+    const userInfo = validateToken(event);
+    const compra_id = event.pathParameters?.compra_id;
+    
+    if (!compra_id) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'ID de compra requerido' }),
+      };
+    }
+
+    const getResult = await dynamodb.get({
+      TableName: COMPRAS_TABLE,
+      Key: {
+        tenant_id: userInfo.tenant_id,
+        compra_id: compra_id
+      }
+    }).promise();
+
+    if (!getResult.Item) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Compra no encontrada' }),
+      };
+    }
+
+    const compra = getResult.Item;
+
+    if (compra.user_id !== userInfo.user_id && userInfo.role !== 'admin') {
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'No autorizado para cancelar esta compra' }),
+      };
+    }
+
+    // Verificar que la compra se pueda cancelar
+    const estadosCancelables = ['pendiente', 'esperando_aprobacion', 'procesando_pago', 'validando'];
+    if (!estadosCancelables.includes(compra.estado)) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ 
+          error: `No se puede cancelar una compra en estado: ${compra.estado}`,
+          current_estado: compra.estado 
+        }),
+      };
+    }
+
+    if (compra.approval_info?.task_token) {
+      const stepfunctions = new AWS.StepFunctions();
+      try {
+        await stepfunctions.sendTaskFailure({
+          taskToken: compra.approval_info.task_token,
+          error: 'CompraCancelada',
+          cause: `Compra cancelada por ${userInfo.role === 'admin' ? 'administrador' : 'usuario'}: ${userInfo.user_id}`
+        }).promise();
+        console.log(`✅ Workflow terminado para compra cancelada: ${compra_id}`);
+      } catch (stepError) {
+        console.warn(`⚠️ No se pudo terminar el workflow (posiblemente ya terminado): ${stepError.message}`);
+      }
+    }
+
+    for (const producto of compra.productos) {
+      try {
+        await dynamodb.update({
+          TableName: PRODUCTOS_TABLE,
+          Key: {
+            tenant_id: userInfo.tenant_id,
+            codigo: producto.codigo
+          },
+          UpdateExpression: 'SET stock = stock + :cantidad, updated_at = :updated_at',
+          ExpressionAttributeValues: {
+            ':cantidad': producto.cantidad,
+            ':updated_at': new Date().toISOString()
+          }
+        }).promise();
+        console.log(`✅ Stock restaurado: ${producto.codigo} (+${producto.cantidad})`);
+      } catch (stockError) {
+        console.error(`❌ Error restaurando stock para ${producto.codigo}:`, stockError);
+      }
+    }
+
+    await dynamodb.delete({
+      TableName: COMPRAS_TABLE,
+      Key: {
+        tenant_id: userInfo.tenant_id,
+        compra_id: compra_id
+      }
+    }).promise();
+
+    console.log(`✅ Compra eliminada exitosamente: ${compra_id}`);
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        mensaje: 'Compra cancelada y eliminada exitosamente',
+        compra_id: compra_id,
+        estado_anterior: compra.estado,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: userInfo.user_id
+      }),
+    };
+
+  } catch (error) {
+    console.error('Error cancelando compra:', error);
+    
     if (error.message.includes('Token')) {
       return {
         statusCode: 401,

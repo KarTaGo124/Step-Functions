@@ -8,7 +8,6 @@ export async function handler(event) {
   console.log('DetectLowStock input:', JSON.stringify(event, null, 2));
   
   try {
-    // Extraer datos del detail del evento de EventBridge o del evento directo
     const eventDetail = event.detail || event;
     const { tenant_id, codigo, stock } = eventDetail;
     const threshold = eventDetail.threshold || 10;
