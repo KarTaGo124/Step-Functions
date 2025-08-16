@@ -42,6 +42,14 @@ functions:
           method: get
           cors: true
 
+  listarComprasPendientes:
+    handler: handler.listarComprasPendientes
+    events:
+      - http:
+          path: /compras/pendientes-aprobacion
+          method: get
+          cors: true
+
 resources:
   Resources:
     ComprasTable:

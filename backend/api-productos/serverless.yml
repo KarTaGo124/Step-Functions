@@ -57,6 +57,14 @@ functions:
           method: delete
           cors: true
 
+  listarProductosStockBajo:
+    handler: handler.listarProductosStockBajo
+    events:
+      - http:
+          path: /productos/stock-bajo
+          method: get
+          cors: true
+
 resources:
   Resources:
     ProductosTable:

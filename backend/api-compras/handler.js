@@ -318,3 +318,65 @@ export async function obtenerCompra(event) {
     };
   }
 }
+
+export async function listarComprasPendientes(event) {
+  try {
+    const userInfo = validateToken(event);
+    
+    // Solo admins pueden ver compras pendientes de aprobación
+    if (userInfo.role !== 'admin') {
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'No autorizado. Solo administradores pueden ver compras pendientes.' }),
+      };
+    }
+    
+    const queryParams = event?.queryStringParameters || {};
+    const limit = Math.min(Number(queryParams.limit) || 50, 100);
+
+    // Escanear compras con estado 'esperando_aprobacion'
+    const params = {
+      TableName: COMPRAS_TABLE,
+      FilterExpression: 'tenant_id = :tenant_id AND estado = :estado',
+      ExpressionAttributeValues: {
+        ':tenant_id': userInfo.tenant_id,
+        ':estado': 'esperando_aprobacion'
+      },
+      Limit: limit,
+    };
+
+    if (queryParams.lastKey) {
+      params.ExclusiveStartKey = JSON.parse(decodeURIComponent(queryParams.lastKey));
+    }
+
+    const result = await dynamodb.scan(params).promise();
+
+    const response = {
+      compras: result.Items || [],
+      lastKey: result.LastEvaluatedKey ? encodeURIComponent(JSON.stringify(result.LastEvaluatedKey)) : null,
+      count: result.Items?.length || 0,
+    };
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify(response),
+    };
+
+  } catch (error) {
+    console.error('Error listing pending purchases:', error);
+    if (error.message.includes('Token')) {
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message }),
+      };
+    }
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Error interno del servidor' }),
+    };
+  }
+}

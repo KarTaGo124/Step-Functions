@@ -44,6 +44,10 @@ functions:
           path: /approval/{execution_arn}
           method: post
           cors: true
+      - http:
+          path: /approval
+          method: post
+          cors: true
           
   # Workflow 2 - Gestión de Inventario
   detectLowStock:
@@ -59,6 +63,10 @@ functions:
           path: /restock/{execution_arn}
           method: post
           cors: true
+      - http:
+          path: /restock
+          method: post
+          cors: true
           
   processRestock:
     handler: workflow-2-inventory-management/processRestock.handler
@@ -66,8 +74,6 @@ functions:
   # Common Handlers
   sendNotification:
     handler: common-handlers/sendNotification.handler
-  handleOrderError:
-    handler: common-handlers/handleOrderError.handler
 
 stepFunctions:
   stateMachines:
@@ -195,9 +201,9 @@ stepFunctions:
             Cause: "La aprobación no se recibió en 24 horas"
 
           OrderFailed:
-            Type: Task
-            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-handleOrderError
-            End: true
+            Type: Fail
+            Error: "OrderProcessingFailed"
+            Cause: "El procesamiento del pedido falló - Ver logs de la función específica para detalles"
 
     # Workflow 2 - Gestión de Inventario
     InventoryManagementWorkflow:

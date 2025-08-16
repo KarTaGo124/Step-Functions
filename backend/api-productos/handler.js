@@ -279,3 +279,50 @@ export async function eliminarProducto(event) {
     };
   }
 }
+
+export async function listarProductosStockBajo(event) {
+  try {
+    const userInfo = validateToken(event);
+    const queryParams = event?.queryStringParameters || {};
+    const limit = Math.min(Number(queryParams.limit) || 50, 100);
+
+    // Escanear todos los productos del tenant y filtrar los que tienen stock_alert
+    const params = {
+      TableName: TABLE_NAME,
+      FilterExpression: 'tenant_id = :tenant_id AND attribute_exists(stock_alert) AND attribute_exists(stock_alert.#status)',
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
+      ExpressionAttributeValues: {
+        ':tenant_id': userInfo.tenant_id,
+      },
+      Limit: limit,
+    };
+
+    if (queryParams.lastKey) {
+      params.ExclusiveStartKey = JSON.parse(decodeURIComponent(queryParams.lastKey));
+    }
+
+    const result = await dynamodb.scan(params).promise();
+
+    const response = {
+      productos: result.Items || [],
+      lastKey: result.LastEvaluatedKey ? encodeURIComponent(JSON.stringify(result.LastEvaluatedKey)) : null,
+      count: result.Items?.length || 0,
+    };
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify(response),
+    };
+
+  } catch (error) {
+    console.error('Error:', error);
+    return {
+      statusCode: error.message.includes('Token') ? 401 : 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: error.message }),
+    };
+  }
+}
