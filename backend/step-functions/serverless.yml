@@ -72,6 +72,7 @@ stepFunctions:
     # Workflow 1 - Procesamiento Inteligente de Pedidos
     OrderProcessingWorkflow:
       name: OrderProcessingWorkflow-${self:provider.stage}
+      role: arn:aws:iam::721114448578:role/LabRole
       definition:
         Comment: "Workflow completo para procesamiento inteligente de pedidos con aprobaciones humanas"
         StartAt: ValidateOrder
@@ -199,6 +200,7 @@ stepFunctions:
     # Workflow 2 - Gestión de Inventario
     InventoryManagementWorkflow:
       name: InventoryManagementWorkflow-${self:provider.stage}
+      role: arn:aws:iam::721114448578:role/LabRole
       definition:
         Comment: "Workflow para gestión inteligente de inventario con aprobaciones de restock"
         StartAt: DetectLowStock
