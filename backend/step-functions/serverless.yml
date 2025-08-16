@@ -293,14 +293,14 @@ resources:
       Properties:
         QueueName: OrderProcessingDLQ-${self:provider.stage}
         MessageRetentionPeriod: 1209600  # 14 días
-        VisibilityTimeoutSeconds: 60
+        VisibilityTimeout: 60
 
     InventoryManagementDLQ:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: InventoryManagementDLQ-${self:provider.stage}
         MessageRetentionPeriod: 1209600  # 14 días
-        VisibilityTimeoutSeconds: 60
+        VisibilityTimeout: 60
 
     # EventBridge Rules para triggear Step Functions
     OrderProcessingRule:
