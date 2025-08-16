@@ -194,13 +194,6 @@ stepFunctions:
             Error: "OrderProcessingFailed"
             Cause: "Error durante el procesamiento del pedido"
 
-      events:
-        - eventBridge:
-            eventBus: default
-            pattern:
-              source: ["ecommerce.compras"]
-              detail-type: ["Nueva Compra Creada"]
-
     # Workflow 2 - Gestión de Inventario
     InventoryManagementWorkflow:
       name: InventoryManagementWorkflow-${self:provider.stage}
@@ -287,13 +280,6 @@ stepFunctions:
             Type: Fail
             Error: "InventoryCheckFailed"
             Cause: "Error verificando niveles de inventario"
-
-      events:
-        - eventBridge:
-            eventBus: default
-            pattern:
-              source: ["ecommerce.inventario"]
-              detail-type: ["Stock Bajo Detectado"]
 
 plugins:
   - serverless-dotenv-plugin
