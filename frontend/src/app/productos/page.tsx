@@ -19,30 +19,41 @@ export default function ProductosPage() {
 	const router = useRouter();
 	const [query, setQuery] = useState("");
 	const [productos, setProductos] = useState<Product[]>([]);
-	const [filteredProductos, setFilteredProductos] = useState<Product[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [lastKey, setLastKey] = useState<string | null>(null);
 	const [loadingMore, setLoadingMore] = useState(false);
+	const [, setIsSearchMode] = useState(false);
 
 	const loadProducts = useCallback(
-		async (append = false) => {
+		async (append = false, searchQuery = "") => {
 			const loader = append ? setLoadingMore : setLoading;
 			loader(true);
 
 			try {
-				const { items, lastKey: newLastKey } =
-					await productsService.list({
+				let result;
+
+				if (searchQuery.trim()) {
+					setIsSearchMode(true);
+					result = await productsService.search({
+						q: searchQuery,
 						limit: 12,
 						lastKey: append ? lastKey || undefined : undefined,
 					});
-
-				if (append) {
-					setProductos((prev) => [...prev, ...items]);
 				} else {
-					setProductos(items);
+					setIsSearchMode(false);
+					result = await productsService.list({
+						limit: 12,
+						lastKey: append ? lastKey || undefined : undefined,
+					});
 				}
 
-				setLastKey(newLastKey || null);
+				if (append) {
+					setProductos((prev) => [...prev, ...result.items]);
+				} else {
+					setProductos(result.items);
+				}
+
+				setLastKey(result.lastKey || null);
 			} catch (error) {
 				console.error("Error loading products:", error);
 				toast.error("Error al cargar productos");
@@ -59,19 +70,21 @@ export default function ProductosPage() {
 			return;
 		}
 		if (user) {
-			loadProducts();
+			loadProducts(false, "");
 		}
 	}, [user, isLoading, router, loadProducts]);
 
 	useEffect(() => {
-		// Filtrar productos localmente
-		if (query.trim()) {
-			const filtered = productsService.searchProducts(productos, query);
-			setFilteredProductos(filtered);
-		} else {
-			setFilteredProductos(productos);
-		}
-	}, [query, productos]);
+		const delayedSearch = setTimeout(() => {
+			if (query.trim()) {
+				loadProducts(false, query);
+			} else {
+				loadProducts(false, "");
+			}
+		}, 500);
+
+		return () => clearTimeout(delayedSearch);
+	}, [query, loadProducts]);
 
 	const handleAddToCart = (product: Product) => {
 		if (product.stock <= 0) {
@@ -106,7 +119,6 @@ export default function ProductosPage() {
 		);
 	}
 
-	// Si no hay usuario después de cargar, redirigir
 	if (!user) {
 		return null;
 	}
@@ -158,9 +170,8 @@ export default function ProductosPage() {
 					<>
 						<div className="mb-6 flex justify-between items-center">
 							<p className="text-gray-600">
-								{filteredProductos.length} producto(s)
-								disponible(s)
-								{query && ` - Filtrado por "${query}"`}
+								{productos.length} producto(s) disponible(s)
+								{query && ` - Resultados para "${query}"`}
 							</p>
 
 							{query && (
@@ -169,12 +180,12 @@ export default function ProductosPage() {
 									size="sm"
 									onClick={() => setQuery("")}
 								>
-									Limpiar filtro
+									Limpiar búsqueda
 								</Button>
 							)}
 						</div>
 
-						{filteredProductos.length === 0 ? (
+						{productos.length === 0 ? (
 							<Card>
 								<div className="text-center py-12">
 									<SearchIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -191,7 +202,7 @@ export default function ProductosPage() {
 						) : (
 							<>
 								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-									{filteredProductos.map((product) => (
+									{productos.map((product) => (
 										<Card
 											key={product.codigo}
 											padding={false}
@@ -280,10 +291,12 @@ export default function ProductosPage() {
 								</div>
 
 								{/* Cargar más productos */}
-								{!query && lastKey && (
+								{lastKey && (
 									<div className="text-center mt-8">
 										<Button
-											onClick={() => loadProducts(true)}
+											onClick={() =>
+												loadProducts(true, query)
+											}
 											loading={loadingMore}
 											disabled={loadingMore}
 											variant="secondary"

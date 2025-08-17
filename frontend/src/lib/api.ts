@@ -162,6 +162,25 @@ export const productsService = {
 		};
 	},
 
+	async search(params: {
+		q: string;
+		limit?: number;
+		lastKey?: string;
+	}): Promise<PaginatedResponse<Product>> {
+		const response: AxiosResponse<{
+			productos: Product[];
+			lastKey: string | null;
+			count: number;
+			searchQuery: string;
+		}> = await productosApi.get("/productos/search", { params });
+
+		return {
+			items: response.data.productos,
+			lastKey: response.data.lastKey,
+			count: response.data.count,
+		};
+	},
+
 	async getByCode(codigo: string): Promise<{ producto: Product }> {
 		const response: AxiosResponse<{ producto: Product }> =
 			await productosApi.get(`/productos/${codigo}`);
@@ -181,18 +200,6 @@ export const productsService = {
 		const response: AxiosResponse<{ producto: Product }> =
 			await productosApi.delete(`/productos/${codigo}`);
 		return response.data;
-	},
-
-	searchProducts(products: Product[], query: string): Product[] {
-		const searchTerm = query.toLowerCase().trim();
-		if (!searchTerm) return products;
-
-		return products.filter(
-			(product) =>
-				product.codigo.toLowerCase().includes(searchTerm) ||
-				product.nombre.toLowerCase().includes(searchTerm) ||
-				product.descripcion.toLowerCase().includes(searchTerm)
-		);
 	},
 
 	async listLowStock(params?: {

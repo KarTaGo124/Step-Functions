@@ -325,3 +325,63 @@ export async function listarProductosStockBajo(event) {
     };
   }
 }
+
+export async function buscarProductos(event) {
+  try {
+    const userInfo = validateToken(event);
+    const queryParams = event?.queryStringParameters || {};
+    const searchQuery = queryParams.q || '';
+    const limit = Math.min(Number(queryParams.limit) || 20, 100);
+    const lastKey = queryParams.lastKey ? JSON.parse(decodeURIComponent(queryParams.lastKey)) : undefined;
+
+    if (!searchQuery.trim()) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Parámetro de búsqueda "q" es requerido' }),
+      };
+    }
+
+    const searchTerm = searchQuery.toLowerCase().trim();
+
+    const params = {
+      TableName: TABLE_NAME,
+      FilterExpression: 'tenant_id = :tenant_id AND (contains(#nombre, :searchTerm) OR contains(#descripcion, :searchTerm) OR contains(#codigo, :searchTerm))',
+      ExpressionAttributeNames: {
+        '#nombre': 'nombre',
+        '#descripcion': 'descripcion',
+        '#codigo': 'codigo'
+      },
+      ExpressionAttributeValues: {
+        ':tenant_id': userInfo.tenant_id,
+        ':searchTerm': searchTerm,
+      },
+      Limit: limit,
+    };
+
+    if (lastKey) {
+      params.ExclusiveStartKey = lastKey;
+    }
+
+    const result = await dynamodb.scan(params).promise();
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        productos: result.Items,
+        lastKey: result.LastEvaluatedKey ? encodeURIComponent(JSON.stringify(result.LastEvaluatedKey)) : null,
+        count: result.Count,
+        searchQuery: searchQuery,
+      }),
+    };
+
+  } catch (error) {
+    console.error('Error:', error);
+    return {
+      statusCode: error.message.includes('Token') ? 401 : 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: error.message }),
+    };
+  }
+}

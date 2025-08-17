@@ -33,6 +33,14 @@ functions:
           method: get
           cors: true
 
+  buscarProductos:
+    handler: handler.buscarProductos
+    events:
+      - http:
+          path: /productos/search
+          method: get
+          cors: true
+
   buscarProducto:
     handler: handler.buscarProducto
     events:

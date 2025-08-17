@@ -87,6 +87,7 @@ export interface PaginatedResponse<T> {
 	items: T[];
 	lastKey?: string | null;
 	count: number;
+	searchQuery?: string;
 }
 
 // Enums para estados de workflow
