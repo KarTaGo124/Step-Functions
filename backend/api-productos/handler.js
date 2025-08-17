@@ -27,16 +27,25 @@ const validateToken = (event) => {
     return {
       user_id: decoded.user_id,
       tenant_id: decoded.tenant_id,
-      email: decoded.email
+      email: decoded.email,
+      role: decoded.role || 'user'
     };
   } catch (error) {
     throw new Error('Token inválido');
   }
 };
 
+const validateAdmin = (userInfo) => {
+  if (userInfo.role !== 'admin') {
+    throw new Error('Acceso denegado: Se requieren permisos de administrador');
+  }
+};
+
 export async function crearProducto(event) {
   try {
     const userInfo = validateToken(event);
+    validateAdmin(userInfo); 
+    
     const producto = JSON.parse(event.body);
     
     if (!producto.nombre || !producto.precio) {
@@ -77,6 +86,13 @@ export async function crearProducto(event) {
 
   } catch (error) {
     console.error('Error:', error);
+    if (error.message.includes('Acceso denegado')) {
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message }),
+      };
+    }
     return {
       statusCode: error.message.includes('Token') ? 401 : 500,
       headers: corsHeaders,
@@ -166,6 +182,8 @@ export async function buscarProducto(event) {
 export async function modificarProducto(event) {
   try {
     const userInfo = validateToken(event);
+    validateAdmin(userInfo); 
+    
     const { codigo } = event.pathParameters;
     const updates = JSON.parse(event.body);
 
@@ -229,6 +247,13 @@ export async function modificarProducto(event) {
         body: JSON.stringify({ error: 'Producto no encontrado' }),
       };
     }
+    if (error.message.includes('Acceso denegado')) {
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message }),
+      };
+    }
     return {
       statusCode: error.message.includes('Token') ? 401 : 500,
       headers: corsHeaders,
@@ -240,6 +265,7 @@ export async function modificarProducto(event) {
 export async function eliminarProducto(event) {
   try {
     const userInfo = validateToken(event);
+    validateAdmin(userInfo); 
     const { codigo } = event.pathParameters;
 
     const params = {
@@ -270,6 +296,13 @@ export async function eliminarProducto(event) {
         statusCode: 404,
         headers: corsHeaders,
         body: JSON.stringify({ error: 'Producto no encontrado' }),
+      };
+    }
+    if (error.message.includes('Acceso denegado')) {
+      return {
+        statusCode: 403,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: error.message }),
       };
     }
     return {

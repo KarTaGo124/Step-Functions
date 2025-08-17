@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { MainLayout } from "@/components/MainLayout";
 import { Card } from "@/components/ui/Card";
@@ -26,41 +26,59 @@ export default function DashboardPage() {
 	const [hasMoreProducts, setHasMoreProducts] = useState(true);
 
 	// Cargar datos iniciales
-	const loadData = async (append: boolean = false) => {
-		try {
-			if (!append) {
-				setLoading(true);
-			} else {
-				setIsLoadingMore(true);
+	const loadData = useCallback(
+		async (append: boolean = false, searchQuery: string = "") => {
+			try {
+				if (!append) {
+					setLoading(true);
+				} else {
+					setIsLoadingMore(true);
+				}
+
+				// Decidir si usar búsqueda o listado normal
+				const shouldSearch = searchQuery.trim().length > 0;
+
+				const [productsResponse, purchasesResponse] = await Promise.all(
+					[
+						shouldSearch
+							? productsService.search({
+									q: searchQuery,
+									limit: 20,
+									lastKey: append
+										? productsLastKey || undefined
+										: undefined,
+							  })
+							: productsService.list({
+									limit: 20,
+									lastKey: append
+										? productsLastKey || undefined
+										: undefined,
+							  }),
+						append
+							? Promise.resolve({ items: recentPurchases })
+							: purchasesService.list({ limit: 3 }),
+					]
+				);
+
+				if (append) {
+					setProducts((prev) => [...prev, ...productsResponse.items]);
+				} else {
+					setProducts(productsResponse.items);
+					if (!append) setRecentPurchases(purchasesResponse.items);
+				}
+
+				setProductsLastKey(productsResponse.lastKey || null);
+				setHasMoreProducts(!!productsResponse.lastKey);
+			} catch (error) {
+				console.error("Error loading data:", error);
+				toast.error("Error al cargar datos");
+			} finally {
+				setLoading(false);
+				setIsLoadingMore(false);
 			}
-
-			const [productsResponse, purchasesResponse] = await Promise.all([
-				productsService.list({
-					limit: 20,
-					lastKey: append ? productsLastKey || undefined : undefined,
-				}),
-				append
-					? Promise.resolve({ items: recentPurchases })
-					: purchasesService.list({ limit: 3 }),
-			]);
-
-			if (append) {
-				setProducts((prev) => [...prev, ...productsResponse.items]);
-			} else {
-				setProducts(productsResponse.items);
-				setRecentPurchases(purchasesResponse.items);
-			}
-
-			setProductsLastKey(productsResponse.lastKey || null);
-			setHasMoreProducts(!!productsResponse.lastKey);
-		} catch (error) {
-			console.error("Error loading data:", error);
-			toast.error("Error al cargar datos");
-		} finally {
-			setLoading(false);
-			setIsLoadingMore(false);
-		}
-	};
+		},
+		[productsLastKey, recentPurchases]
+	);
 
 	useEffect(() => {
 		const initializeData = async () => {
@@ -93,10 +111,22 @@ export default function DashboardPage() {
 		initializeData();
 	}, [user]);
 
-	const loadMoreProducts = async () => {
+	// Manejar búsqueda con debounce
+	useEffect(() => {
+		const timeoutId = setTimeout(() => {
+			// Reset pagination cuando cambia el término de búsqueda
+			setProductsLastKey(null);
+			setHasMoreProducts(true);
+			loadData(false, searchTerm);
+		}, 300); // Debounce de 300ms
+
+		return () => clearTimeout(timeoutId);
+	}, [searchTerm]);
+
+	const loadMoreProducts = useCallback(async () => {
 		if (!hasMoreProducts || isLoadingMore) return;
-		await loadData(true);
-	};
+		await loadData(true, searchTerm);
+	}, [hasMoreProducts, isLoadingMore, loadData, searchTerm]);
 
 	// Agregar al carrito
 	const addToCart = (product: Product) => {
@@ -129,10 +159,7 @@ export default function DashboardPage() {
 		window.dispatchEvent(new Event("cartUpdated"));
 	};
 
-	// Filtrar productos solo por nombre
-	const filteredProducts = products.filter((product) =>
-		product.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-	);
+	// Ya no necesitamos filtrado local, los productos vienen filtrados del backend
 
 	// Manejar redirección de autenticación
 	useEffect(() => {
@@ -268,24 +295,28 @@ export default function DashboardPage() {
 								🛍️ Productos para ti
 							</h2>
 							<span className="text-sm text-gray-600">
-								{filteredProducts.length} productos encontrados
+								{products.length} productos encontrados
+								{searchTerm && ` para "${searchTerm}"`}
 							</span>
 						</div>
 
-						{filteredProducts.length === 0 ? (
+						{products.length === 0 ? (
 							<div className="text-center py-12">
 								<div className="text-6xl mb-4">🔍</div>
 								<h3 className="text-xl font-semibold text-gray-900 mb-2">
-									No se encontraron productos
+									{searchTerm
+										? `No se encontraron productos para "${searchTerm}"`
+										: "No se encontraron productos"}
 								</h3>
 								<p className="text-gray-600">
-									Intenta cambiar los filtros o el término de
-									búsqueda
+									{searchTerm
+										? "Intenta con otros términos de búsqueda"
+										: "No hay productos disponibles en este momento"}
 								</p>
 							</div>
 						) : (
 							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-								{filteredProducts.map((product) => (
+								{products.map((product) => (
 									<Card
 										key={product.codigo}
 										className="group hover:shadow-lg transition-shadow"
@@ -341,7 +372,7 @@ export default function DashboardPage() {
 						)}
 
 						{/* Botón para cargar más productos */}
-						{hasMoreProducts && filteredProducts.length > 0 && (
+						{hasMoreProducts && products.length > 0 && (
 							<div className="text-center mt-8">
 								<Button
 									onClick={loadMoreProducts}
@@ -367,7 +398,7 @@ export default function DashboardPage() {
 					// Recargar datos desde el inicio
 					setProductsLastKey(null);
 					setHasMoreProducts(true);
-					await loadData(false);
+					await loadData(false, searchTerm);
 				}}
 			/>
 		</>
