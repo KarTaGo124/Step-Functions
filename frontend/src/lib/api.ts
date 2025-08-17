@@ -9,12 +9,10 @@ import {
 	PaginatedResponse,
 } from "@/types";
 
-// URLs base de las APIs (ajustar según deployment)
 const API_USUARIOS_BASE = process.env.NEXT_PUBLIC_API_USUARIOS_URL;
 const API_PRODUCTOS_BASE = process.env.NEXT_PUBLIC_API_PRODUCTOS_URL;
 const API_COMPRAS_BASE = process.env.NEXT_PUBLIC_API_COMPRAS_URL;
 
-// Configurar interceptores para todas las instancias
 const createAxiosInstance = (baseURL: string): AxiosInstance => {
 	const instance = axios.create({
 		baseURL,
@@ -24,11 +22,9 @@ const createAxiosInstance = (baseURL: string): AxiosInstance => {
 		},
 	});
 
-	// Interceptor para agregar token automáticamente
 	instance.interceptors.request.use((config) => {
 		let token = Cookies.get("auth_token");
 
-		// Si no hay token en cookies, intentar localStorage
 		if (!token && typeof window !== "undefined") {
 			token = localStorage.getItem("auth_token") || undefined;
 		}
@@ -39,12 +35,10 @@ const createAxiosInstance = (baseURL: string): AxiosInstance => {
 		return config;
 	});
 
-	// Interceptor para manejar errores de autenticación
 	instance.interceptors.response.use(
 		(response) => response,
 		(error) => {
 			if (error.response?.status === 401) {
-				// Token expirado o inválido - limpiar tanto cookies como localStorage
 				Cookies.remove("auth_token");
 				Cookies.remove("user_data");
 				if (typeof window !== "undefined") {
@@ -64,7 +58,6 @@ const usuariosApi = createAxiosInstance(API_USUARIOS_BASE || "");
 const productosApi = createAxiosInstance(API_PRODUCTOS_BASE || "");
 const comprasApi = createAxiosInstance(API_COMPRAS_BASE || "");
 
-// Servicios de autenticación
 export const authService = {
 	async register(data: {
 		email: string;
@@ -88,14 +81,12 @@ export const authService = {
 			data
 		);
 
-		// Guardar token y datos del usuario en cookies Y localStorage
 		if (response.data.token) {
 			Cookies.set("auth_token", response.data.token, { expires: 1 }); // 1 día
 			Cookies.set("user_data", JSON.stringify(response.data.usuario), {
 				expires: 1,
 			});
 
-			// También guardar en localStorage como backup
 			if (typeof window !== "undefined") {
 				localStorage.setItem("auth_token", response.data.token);
 				localStorage.setItem(
@@ -118,7 +109,6 @@ export const authService = {
 		Cookies.remove("auth_token");
 		Cookies.remove("user_data");
 
-		// También limpiar localStorage
 		if (typeof window !== "undefined") {
 			localStorage.removeItem("auth_token");
 			localStorage.removeItem("user_data");
@@ -128,7 +118,6 @@ export const authService = {
 	getCurrentUser(): User | null {
 		let userData = Cookies.get("user_data");
 
-		// Si no hay en cookies, intentar localStorage
 		if (!userData && typeof window !== "undefined") {
 			userData = localStorage.getItem("user_data") || undefined;
 		}
@@ -147,7 +136,6 @@ export const authService = {
 	},
 };
 
-// Servicios de productos
 export const productsService = {
 	async create(
 		product: Omit<Product, "tenant_id" | "created_at" | "created_by">
@@ -195,7 +183,6 @@ export const productsService = {
 		return response.data;
 	},
 
-	// Búsqueda local (cliente) por nombre o código
 	searchProducts(products: Product[], query: string): Product[] {
 		const searchTerm = query.toLowerCase().trim();
 		if (!searchTerm) return products;
@@ -208,7 +195,6 @@ export const productsService = {
 		);
 	},
 
-	// Listar productos con stock bajo
 	async listLowStock(params?: {
 		limit?: number;
 		lastKey?: string;
@@ -227,7 +213,6 @@ export const productsService = {
 	},
 };
 
-// Servicios de compras
 export const purchasesService = {
 	async create(data: {
 		productos: Array<{
@@ -263,7 +248,6 @@ export const purchasesService = {
 		return response.data;
 	},
 
-	// Listar compras pendientes de aprobación (solo admins)
 	async listPendingApprovals(params?: {
 		limit?: number;
 		lastKey?: string;
@@ -281,7 +265,6 @@ export const purchasesService = {
 		};
 	},
 
-	// Para el dashboard de administrador - aprobar/rechazar pedidos
 	async approveOrder(data: {
 		execution_arn?: string;
 		task_token?: string;
@@ -289,7 +272,6 @@ export const purchasesService = {
 		reason?: string;
 		approver: string;
 	}): Promise<ApiResponse> {
-		// Esta URL necesitará ser configurada según el endpoint de step functions
 		const stepFunctionsApi = createAxiosInstance(
 			process.env.NEXT_PUBLIC_STEP_FUNCTIONS_URL || ""
 		);
@@ -302,7 +284,6 @@ export const purchasesService = {
 		return response.data;
 	},
 
-	// Cancelar una compra
 	async cancel(compraId: string): Promise<ApiResponse> {
 		const response: AxiosResponse<ApiResponse> = await comprasApi.put(
 			`/compras/${compraId}/cancel`
@@ -311,9 +292,7 @@ export const purchasesService = {
 	},
 };
 
-// Servicio para gestión de inventario y restock
 export const inventoryService = {
-	// Aprobar/rechazar decisiones de restock
 	async handleRestockDecision(data: {
 		execution_arn?: string;
 		task_token?: string;
@@ -334,40 +313,11 @@ export const inventoryService = {
 	},
 };
 
-// Servicio para polling de estado de compras
-export const pollingService = {
-	startPolling(
-		compraId: string,
-		onUpdate: (compra: Compra) => void,
-		intervalMs = 5000
-	): () => void {
-		const interval = setInterval(async () => {
-			try {
-				const { compra } = await purchasesService.getById(compraId);
-				onUpdate(compra);
-
-				// Detener polling si llegó a un estado final
-				if (
-					["completado", "rechazado", "error"].includes(compra.estado)
-				) {
-					clearInterval(interval);
-				}
-			} catch (error) {
-				console.error("Error polling compra:", error);
-			}
-		}, intervalMs);
-
-		// Retornar función para detener el polling
-		return () => clearInterval(interval);
-	},
-};
-
 const apiService = {
 	auth: authService,
 	products: productsService,
 	purchases: purchasesService,
 	inventory: inventoryService,
-	polling: pollingService,
 };
 
 export default apiService;
