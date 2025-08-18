@@ -36,11 +36,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		const initAuth = async () => {
 			try {
 				if (authService.isAuthenticated()) {
+					// Primero intentar obtener el usuario desde localStorage/cookies
+					const storedUser = authService.getCurrentUser();
+					
+					if (storedUser && storedUser.nombre) {
+						setUser(storedUser);
+						setIsLoading(false);
+						return;
+					}
+
+					// Si no hay usuario almacenado válido, validar con el servidor
 					const { valido, usuario } =
 						await authService.validateToken();
-					if (valido) {
+					if (valido && usuario && usuario.nombre) {
 						setUser(usuario);
 					} else {
+						console.log("Token válido pero usuario incompleto:", usuario);
 						authService.logout();
 					}
 				}

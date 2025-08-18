@@ -375,11 +375,17 @@ export async function buscarProductos(event) {
       };
     }
 
-    const searchTerm = searchQuery.toLowerCase().trim();
+    const originalTerm = searchQuery.trim();
+    const lowerTerm = searchQuery.toLowerCase().trim();
+    const upperTerm = searchQuery.toUpperCase().trim();
 
     const params = {
       TableName: TABLE_NAME,
-      FilterExpression: 'tenant_id = :tenant_id AND (contains(#nombre, :searchTerm) OR contains(#descripcion, :searchTerm) OR contains(#codigo, :searchTerm))',
+      FilterExpression: `tenant_id = :tenant_id AND (
+        contains(#nombre, :originalTerm) OR contains(#nombre, :lowerTerm) OR contains(#nombre, :upperTerm) OR
+        contains(#descripcion, :originalTerm) OR contains(#descripcion, :lowerTerm) OR contains(#descripcion, :upperTerm) OR
+        contains(#codigo, :originalTerm) OR contains(#codigo, :lowerTerm) OR contains(#codigo, :upperTerm)
+      )`,
       ExpressionAttributeNames: {
         '#nombre': 'nombre',
         '#descripcion': 'descripcion',
@@ -387,7 +393,9 @@ export async function buscarProductos(event) {
       },
       ExpressionAttributeValues: {
         ':tenant_id': userInfo.tenant_id,
-        ':searchTerm': searchTerm,
+        ':originalTerm': originalTerm,
+        ':lowerTerm': lowerTerm,
+        ':upperTerm': upperTerm,
       },
       Limit: limit,
     };

@@ -20,14 +20,20 @@ export default function ProductosPage() {
 	const [query, setQuery] = useState("");
 	const [productos, setProductos] = useState<Product[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [isSearching, setIsSearching] = useState(false);
 	const [lastKey, setLastKey] = useState<string | null>(null);
 	const [loadingMore, setLoadingMore] = useState(false);
 	const [, setIsSearchMode] = useState(false);
 
 	const loadProducts = useCallback(
 		async (append = false, searchQuery = "") => {
-			const loader = append ? setLoadingMore : setLoading;
-			loader(true);
+			if (!append && searchQuery.trim()) {
+				setIsSearching(true);
+			} else if (!append) {
+				setLoading(true);
+			} else {
+				setLoadingMore(true);
+			}
 
 			try {
 				let result;
@@ -58,7 +64,9 @@ export default function ProductosPage() {
 				console.error("Error loading products:", error);
 				toast.error("Error al cargar productos");
 			} finally {
-				loader(false);
+				setLoading(false);
+				setIsSearching(false);
+				setLoadingMore(false);
 			}
 		},
 		[lastKey]
@@ -103,7 +111,6 @@ export default function ProductosPage() {
 		toast.success(`${product.nombre} agregado al carrito`);
 	};
 
-	// Mostrar loading si está cargando autenticación
 	if (isLoading) {
 		return (
 			<MainLayout>
@@ -141,8 +148,13 @@ export default function ProductosPage() {
 								placeholder="Buscar por código, nombre o descripción..."
 								value={query}
 								onChange={(e) => setQuery(e.target.value)}
-								className="pl-10"
+								className="pl-10 pr-10"
 							/>
+							{isSearching && (
+								<div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+									<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+								</div>
+							)}
 						</div>
 
 						<div className="flex gap-2">
@@ -170,11 +182,19 @@ export default function ProductosPage() {
 					<>
 						<div className="mb-6 flex justify-between items-center">
 							<p className="text-gray-600">
-								{productos.length} producto(s) disponible(s)
-								{query && ` - Resultados para "${query}"`}
+								{isSearching ? (
+									"Buscando productos..."
+								) : (
+									<>
+										{productos.length} producto(s)
+										disponible(s)
+										{query &&
+											` - Resultados para "${query}"`}
+									</>
+								)}
 							</p>
 
-							{query && (
+							{query && !isSearching && (
 								<Button
 									variant="secondary"
 									size="sm"

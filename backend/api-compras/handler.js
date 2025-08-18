@@ -418,7 +418,6 @@ export async function cancelarCompra(event) {
       };
     }
 
-    // Verificar que la compra se pueda cancelar
     const estadosCancelables = ['pendiente', 'esperando_aprobacion', 'procesando_pago', 'validando'];
     if (!estadosCancelables.includes(compra.estado)) {
       return {

@@ -18,24 +18,24 @@ export default function DashboardPage() {
 	const [recentPurchases, setRecentPurchases] = useState<Compra[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [searchTerm, setSearchTerm] = useState("");
+	const [isSearching, setIsSearching] = useState(false);
 	const [cartModalOpen, setCartModalOpen] = useState(false);
 
-	// Estados de paginación
 	const [productsLastKey, setProductsLastKey] = useState<string | null>(null);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [hasMoreProducts, setHasMoreProducts] = useState(true);
 
-	// Cargar datos iniciales
 	const loadData = useCallback(
 		async (append: boolean = false, searchQuery: string = "") => {
 			try {
-				if (!append) {
+				if (!append && !searchQuery) {
 					setLoading(true);
+				} else if (!append && searchQuery) {
+					setIsSearching(true);
 				} else {
 					setIsLoadingMore(true);
 				}
 
-				// Decidir si usar búsqueda o listado normal
 				const shouldSearch = searchQuery.trim().length > 0;
 
 				const [productsResponse, purchasesResponse] = await Promise.all(
@@ -74,6 +74,7 @@ export default function DashboardPage() {
 				toast.error("Error al cargar datos");
 			} finally {
 				setLoading(false);
+				setIsSearching(false);
 				setIsLoadingMore(false);
 			}
 		},
@@ -111,16 +112,15 @@ export default function DashboardPage() {
 		initializeData();
 	}, [user]);
 
-	// Manejar búsqueda con debounce
 	useEffect(() => {
 		const timeoutId = setTimeout(() => {
-			// Reset pagination cuando cambia el término de búsqueda
 			setProductsLastKey(null);
 			setHasMoreProducts(true);
 			loadData(false, searchTerm);
-		}, 300); // Debounce de 300ms
+		}, 500);
 
 		return () => clearTimeout(timeoutId);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [searchTerm]);
 
 	const loadMoreProducts = useCallback(async () => {
@@ -128,9 +128,11 @@ export default function DashboardPage() {
 		await loadData(true, searchTerm);
 	}, [hasMoreProducts, isLoadingMore, loadData, searchTerm]);
 
-	// Agregar al carrito
 	const addToCart = (product: Product) => {
-		if (!user) return;
+		if (!user || isLoading) {
+			toast.error("Espera un momento...");
+			return;
+		}
 
 		const cartKey = `cart_${user.tenant_id}_${user.user_id}`;
 		const existingCart = localStorage.getItem(cartKey);
@@ -155,41 +157,19 @@ export default function DashboardPage() {
 		localStorage.setItem(cartKey, JSON.stringify(cart));
 		toast.success(`${product.nombre} agregado al carrito`);
 
-		// Disparar evento para actualizar contador del carrito
 		window.dispatchEvent(new Event("cartUpdated"));
 	};
 
-	// Ya no necesitamos filtrado local, los productos vienen filtrados del backend
-
-	// Manejar redirección de autenticación
 	useEffect(() => {
 		if (!user && !isLoading) {
 			router.push("/auth/login");
 		}
 	}, [user, isLoading, router]);
 
-	// Mostrar loading si está cargando autenticación
-	if (isLoading) {
-		return (
-			<MainLayout onCartClick={() => setCartModalOpen(true)}>
-				<div className="max-w-6xl mx-auto px-4 py-8">
-					<div className="text-center">
-						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-						<p className="mt-4 text-gray-600">
-							Verificando autenticación...
-						</p>
-					</div>
-				</div>
-			</MainLayout>
-		);
+	if (!user && !isLoading) {
+		return null;
 	}
 
-	// Si no hay usuario después de cargar, redirigir
-	if (!user) {
-		return null; // El useEffect se encargará de la redirección
-	}
-
-	// Mostrar loading si está cargando datos
 	if (loading) {
 		return (
 			<MainLayout
@@ -218,7 +198,21 @@ export default function DashboardPage() {
 					{/* Header de bienvenida */}
 					<div className="mb-8">
 						<h1 className="text-2xl font-bold text-gray-900 mb-2">
-							Hola, {user.nombre} 👋
+							{isLoading ? (
+								<span className="flex items-center gap-2">
+									Hola,{" "}
+									<div className="animate-pulse bg-gray-200 h-6 w-24 rounded inline-block"></div>{" "}
+									👋
+								</span>
+							) : user?.nombre ? (
+								`Hola, ${user.nombre} 👋`
+							) : (
+								<span className="flex items-center gap-2">
+									Hola,{" "}
+									<div className="animate-pulse bg-gray-200 h-6 w-24 rounded inline-block"></div>{" "}
+									👋
+								</span>
+							)}
 						</h1>
 						<p className="text-gray-600">
 							Descubre nuestros productos destacados
@@ -227,13 +221,20 @@ export default function DashboardPage() {
 
 					{/* Barra de búsqueda */}
 					<div className="mb-8 bg-white p-4 rounded-lg shadow-sm">
-						<input
-							type="text"
-							placeholder="Buscar productos por nombre..."
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-						/>
+						<div className="relative">
+							<input
+								type="text"
+								placeholder="Buscar productos por nombre..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							/>
+							{isSearching && (
+								<div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+									<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+								</div>
+							)}
+						</div>
 					</div>
 
 					{/* Compras recientes - Solo si hay */}
@@ -293,10 +294,21 @@ export default function DashboardPage() {
 						<div className="flex justify-between items-center mb-6">
 							<h2 className="text-xl font-semibold text-gray-900">
 								🛍️ Productos para ti
+								{isSearching && (
+									<span className="ml-2 text-sm text-blue-600">
+										(buscando...)
+									</span>
+								)}
 							</h2>
 							<span className="text-sm text-gray-600">
-								{products.length} productos encontrados
-								{searchTerm && ` para "${searchTerm}"`}
+								{isSearching ? (
+									"Buscando productos..."
+								) : (
+									<>
+										{products.length} productos encontrados
+										{searchTerm && ` para "${searchTerm}"`}
+									</>
+								)}
 							</span>
 						</div>
 
@@ -395,7 +407,6 @@ export default function DashboardPage() {
 				isOpen={cartModalOpen}
 				onClose={() => setCartModalOpen(false)}
 				onPurchaseComplete={async () => {
-					// Recargar datos desde el inicio
 					setProductsLastKey(null);
 					setHasMoreProducts(true);
 					await loadData(false, searchTerm);
