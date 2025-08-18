@@ -115,7 +115,7 @@ stepFunctions:
             Choices:
               - Variable: "$.total"
                 NumericGreaterThan: 500
-                Next: RequireApproval
+                Next: SendApprovalNotification
             Default: ProcessPayment
 
           SendApprovalNotification:
