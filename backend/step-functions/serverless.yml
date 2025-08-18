@@ -255,7 +255,7 @@ stepFunctions:
               producto_codigo.$: "$.producto_codigo"
               restock_quantity.$: "$.restock_quantity"
               supervisor.$: "$.supervisor"
-            Next: SendRestockNotification
+            Next: SendNotification
             Catch:
               - ErrorEquals: ["States.ALL"]
                 Next: RestockFailed
