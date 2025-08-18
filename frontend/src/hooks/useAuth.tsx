@@ -32,26 +32,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		// Verificar si hay un usuario autenticado al cargar la página
 		const initAuth = async () => {
 			try {
 				if (authService.isAuthenticated()) {
-					// Primero intentar obtener el usuario desde localStorage/cookies
 					const storedUser = authService.getCurrentUser();
-					
+
 					if (storedUser && storedUser.nombre) {
 						setUser(storedUser);
 						setIsLoading(false);
 						return;
 					}
 
-					// Si no hay usuario almacenado válido, validar con el servidor
 					const { valido, usuario } =
 						await authService.validateToken();
 					if (valido && usuario && usuario.nombre) {
 						setUser(usuario);
 					} else {
-						console.log("Token válido pero usuario incompleto:", usuario);
+						console.log(
+							"Token válido pero usuario incompleto:",
+							usuario
+						);
 						authService.logout();
 					}
 				}
@@ -89,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	}) => {
 		try {
 			await authService.register(data);
-			// Después del registro, hacer login automáticamente
 			await login(data.email, data.password, data.tenant_id);
 		} catch (error) {
 			console.error("Register error:", error);

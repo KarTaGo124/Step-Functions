@@ -8,7 +8,6 @@ const CART_STORAGE_KEY = "ecommerce_cart";
 export function useCart() {
 	const [cart, setCart] = useState<CartItem[]>([]);
 
-	// Cargar carrito desde localStorage al inicializar
 	useEffect(() => {
 		if (typeof window !== "undefined") {
 			const savedCart = localStorage.getItem(CART_STORAGE_KEY);
@@ -25,7 +24,6 @@ export function useCart() {
 		}
 	}, []);
 
-	// Guardar carrito en localStorage cada vez que cambie
 	useEffect(() => {
 		if (typeof window !== "undefined") {
 			localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
@@ -43,7 +41,6 @@ export function useCart() {
 			);
 
 			if (existingItem) {
-				// Si el producto ya existe, actualizar cantidad
 				return currentCart.map((cartItem) =>
 					cartItem.codigo === item.codigo
 						? {
@@ -56,7 +53,6 @@ export function useCart() {
 						: cartItem
 				);
 			} else {
-				// Si es un producto nuevo, agregarlo
 				return [
 					...currentCart,
 					{ ...item, cantidad: Math.min(cantidad, item.stock) },

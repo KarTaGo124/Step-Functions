@@ -90,7 +90,6 @@ export interface PaginatedResponse<T> {
 	searchQuery?: string;
 }
 
-// Enums para estados de workflow
 export enum EstadoCompra {
 	PENDIENTE = "pendiente",
 	VALIDANDO = "validando",
@@ -110,7 +109,6 @@ export enum EstadoCompra {
 	COMPLETADO_SIN_NOTIFICACION = "completado_sin_notificacion",
 }
 
-// Enums para estados de inventario/stock (workflow 2)
 export enum EstadoStock {
 	PENDING_RESTOCK = "pending_restock",
 	ALERT_FAILED = "alert_failed",
@@ -121,7 +119,6 @@ export enum EstadoStock {
 	PRODUCT_DISCONTINUED = "product_discontinued",
 }
 
-// Mapeo de estados a textos en español
 export const EstadoTexto: Record<EstadoCompra, string> = {
 	[EstadoCompra.PENDIENTE]: "Pendiente",
 	[EstadoCompra.VALIDANDO]: "Validando",
@@ -141,7 +138,6 @@ export const EstadoTexto: Record<EstadoCompra, string> = {
 	[EstadoCompra.COMPLETADO_SIN_NOTIFICACION]: "Completado sin Notificación",
 };
 
-// Mapeo de estados a colores
 export const EstadoColor: Record<EstadoCompra, string> = {
 	[EstadoCompra.PENDIENTE]: "bg-gray-100 text-gray-800",
 	[EstadoCompra.VALIDANDO]: "bg-blue-100 text-blue-800",
@@ -161,7 +157,6 @@ export const EstadoColor: Record<EstadoCompra, string> = {
 	[EstadoCompra.COMPLETADO_SIN_NOTIFICACION]: "bg-yellow-100 text-yellow-800",
 };
 
-// Mapeo de estados de stock a textos en español
 export const EstadoStockTexto: Record<EstadoStock, string> = {
 	[EstadoStock.PENDING_RESTOCK]: "Pendiente Reabastecimiento",
 	[EstadoStock.ALERT_FAILED]: "Error en Alerta",
@@ -172,7 +167,6 @@ export const EstadoStockTexto: Record<EstadoStock, string> = {
 	[EstadoStock.PRODUCT_DISCONTINUED]: "Producto Discontinuado",
 };
 
-// Mapeo de estados de stock a colores
 export const EstadoStockColor: Record<EstadoStock, string> = {
 	[EstadoStock.PENDING_RESTOCK]: "bg-orange-100 text-orange-800",
 	[EstadoStock.ALERT_FAILED]: "bg-red-100 text-red-800",

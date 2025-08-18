@@ -82,7 +82,7 @@ export const authService = {
 		);
 
 		if (response.data.token) {
-			Cookies.set("auth_token", response.data.token, { expires: 1 }); // 1 día
+			Cookies.set("auth_token", response.data.token, { expires: 1 });
 			Cookies.set("user_data", JSON.stringify(response.data.usuario), {
 				expires: 1,
 			});

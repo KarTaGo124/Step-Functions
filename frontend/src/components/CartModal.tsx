@@ -24,7 +24,6 @@ export function CartModal({
 	const [loading, setLoading] = useState(true);
 	const [purchasing, setPurchasing] = useState(false);
 
-	// Cargar productos y carrito del localStorage
 	useEffect(() => {
 		const loadData = async () => {
 			try {
@@ -53,7 +52,6 @@ export function CartModal({
 		}
 	}, [isOpen, user]);
 
-	// Guardar carrito en localStorage
 	const saveCart = (newCart: CartItem[]) => {
 		if (user) {
 			localStorage.setItem(
@@ -62,11 +60,9 @@ export function CartModal({
 			);
 		}
 		setCartItems(newCart);
-		// Actualizar el contador del carrito en el navbar
 		window.dispatchEvent(new Event("cartUpdated"));
 	};
 
-	// Actualizar cantidad
 	const updateQuantity = (codigo: string, newQuantity: number) => {
 		if (newQuantity <= 0) {
 			removeItem(codigo);
@@ -79,20 +75,17 @@ export function CartModal({
 		saveCart(newCart);
 	};
 
-	// Eliminar item
 	const removeItem = (codigo: string) => {
 		const newCart = cartItems.filter((item) => item.codigo !== codigo);
 		saveCart(newCart);
 		toast.success("Producto eliminado del carrito");
 	};
 
-	// Limpiar carrito
 	const clearCart = () => {
 		saveCart([]);
 		toast.success("Carrito limpiado");
 	};
 
-	// Calcular total
 	const calculateTotal = () => {
 		return cartItems.reduce((total, item) => {
 			const producto = productos.find((p) => p.codigo === item.codigo);
@@ -100,7 +93,6 @@ export function CartModal({
 		}, 0);
 	};
 
-	// Procesar compra
 	const processPurchase = async () => {
 		if (cartItems.length === 0) {
 			toast.error("El carrito está vacío");
@@ -116,7 +108,6 @@ export function CartModal({
 
 			await purchasesService.create(compraData);
 
-			// Limpiar carrito
 			saveCart([]);
 
 			toast.success("¡Compra realizada! Procesando pedido...");

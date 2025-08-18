@@ -18,15 +18,12 @@ export default function CarritoPage() {
 	const [loading, setLoading] = useState(true);
 	const [purchasing, setPurchasing] = useState(false);
 
-	// Cargar productos y carrito del localStorage
 	useEffect(() => {
 		const loadData = async () => {
 			try {
-				// Cargar productos para obtener precios actuales
 				const { items: allProducts } = await productsService.list();
 				setProductos(allProducts);
 
-				// Cargar carrito del localStorage
 				const savedCart = localStorage.getItem(
 					`cart_${user?.tenant_id}_${user?.user_id}`
 				);
@@ -49,14 +46,12 @@ export default function CarritoPage() {
 		}
 	}, [user]);
 
-	// Manejar redirección de autenticación
 	useEffect(() => {
 		if (!user && !isLoading) {
 			router.push("/auth/login");
 		}
 	}, [user, isLoading, router]);
 
-	// Guardar carrito en localStorage
 	const saveCart = (newCart: CartItem[]) => {
 		if (user) {
 			localStorage.setItem(
@@ -67,7 +62,6 @@ export default function CarritoPage() {
 		setCartItems(newCart);
 	};
 
-	// Actualizar cantidad
 	const updateQuantity = (codigo: string, newQuantity: number) => {
 		if (newQuantity <= 0) {
 			removeItem(codigo);
@@ -80,20 +74,17 @@ export default function CarritoPage() {
 		saveCart(newCart);
 	};
 
-	// Eliminar item
 	const removeItem = (codigo: string) => {
 		const newCart = cartItems.filter((item) => item.codigo !== codigo);
 		saveCart(newCart);
 		toast.success("Producto eliminado del carrito");
 	};
 
-	// Limpiar carrito
 	const clearCart = () => {
 		saveCart([]);
 		toast.success("Carrito limpiado");
 	};
 
-	// Calcular total
 	const calculateTotal = () => {
 		return cartItems.reduce((total, item) => {
 			const producto = productos.find((p) => p.codigo === item.codigo);
@@ -101,7 +92,6 @@ export default function CarritoPage() {
 		}, 0);
 	};
 
-	// Procesar compra
 	const processPurchase = async () => {
 		if (cartItems.length === 0) {
 			toast.error("El carrito está vacío");
@@ -117,7 +107,6 @@ export default function CarritoPage() {
 
 			await purchasesService.create(compraData);
 
-			// Limpiar carrito
 			saveCart([]);
 
 			toast.success("¡Compra realizada! Procesando pedido...");
@@ -130,7 +119,6 @@ export default function CarritoPage() {
 		}
 	};
 
-	// Mostrar loading si está cargando autenticación
 	if (isLoading) {
 		return (
 			<MainLayout>
@@ -146,12 +134,10 @@ export default function CarritoPage() {
 		);
 	}
 
-	// Si no hay usuario después de cargar, redirigir
 	if (!user) {
 		return null;
 	}
 
-	// Mostrar loading si está cargando datos
 	if (loading) {
 		return (
 			<MainLayout>

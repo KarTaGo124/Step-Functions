@@ -118,7 +118,7 @@ stepFunctions:
                 Next: RequireApproval
             Default: ProcessPayment
 
-          RequireApproval:
+          SendApprovalNotification:
             Type: Task
             Resource: arn:aws:states:::lambda:invoke.waitForTaskToken
             Parameters:
@@ -260,7 +260,7 @@ stepFunctions:
               - ErrorEquals: ["States.ALL"]
                 Next: RestockFailed
 
-          SendRestockNotification:
+          SendNotification:
             Type: Task
             Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
             Next: InventoryUpdated

@@ -28,12 +28,10 @@ export default function LoginPage() {
 			await login(formData.email, formData.password, formData.tenant_id);
 			toast.success("Inicio de sesión exitoso");
 
-			// Obtener el usuario actualizado para verificar su rol
 			const userData = JSON.parse(
 				localStorage.getItem("user_data") || "{}"
 			);
 
-			// Redirigir según el rol del usuario
 			if (userData.role === "admin") {
 				router.push("/admin");
 			} else {

@@ -14,7 +14,6 @@ export default function HomePage() {
 			if (!user) {
 				router.push("/auth/login");
 			} else {
-				// Redirigir según el rol del usuario
 				if (user.role === "admin") {
 					router.push("/admin");
 				} else {

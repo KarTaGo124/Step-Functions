@@ -25,7 +25,6 @@ export default function AdminPage() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-	// Pagination states
 	const [productsLastKey, setProductsLastKey] = useState<string | null>(null);
 	const [lowStockLastKey, setLowStockLastKey] = useState<string | null>(null);
 	const [pendingComprasLastKey, setPendingComprasLastKey] = useState<
@@ -70,7 +69,6 @@ export default function AdminPage() {
 				setPendingCompras(pendingComprasData.items);
 			}
 
-			// Update pagination keys
 			setProductsLastKey(productsData.lastKey || null);
 			setLowStockLastKey(lowStockData.lastKey || null);
 			setPendingComprasLastKey(pendingComprasData.lastKey || null);
@@ -100,7 +98,6 @@ export default function AdminPage() {
 				setLowStockProducts(lowStockData.items);
 				setPendingCompras(pendingComprasData.items);
 
-				// Update pagination keys
 				setProductsLastKey(productsData.lastKey || null);
 				setLowStockLastKey(lowStockData.lastKey || null);
 				setPendingComprasLastKey(pendingComprasData.lastKey || null);
@@ -148,7 +145,6 @@ export default function AdminPage() {
 
 	const handleApproveCompra = async (compraId: string) => {
 		try {
-			// Buscar la compra para obtener el task_token
 			const compra = pendingCompras.find((c) => c.compra_id === compraId);
 			if (compra?.approval_info?.task_token) {
 				await purchasesService.approveOrder({
@@ -749,7 +745,6 @@ export default function AdminPage() {
 	);
 }
 
-// Product Modal Component
 function ProductModal({
 	product,
 	onClose,

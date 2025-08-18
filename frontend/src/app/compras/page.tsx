@@ -16,12 +16,10 @@ export default function ComprasPage() {
 	const [compras, setCompras] = useState<Compra[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	// Estados de paginación
 	const [comprasLastKey, setComprasLastKey] = useState<string | null>(null);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
 	const [hasMoreCompras, setHasMoreCompras] = useState(true);
 
-	// Cargar historial de compras
 	const loadCompras = async (append: boolean = false) => {
 		try {
 			if (!append) {
@@ -94,7 +92,6 @@ export default function ComprasPage() {
 			await purchasesService.cancel(compraId);
 			toast.success("Compra cancelada y eliminada exitosamente");
 
-			// Remover la compra cancelada de la lista local
 			setCompras((prevCompras) =>
 				prevCompras.filter((compra) => compra.compra_id !== compraId)
 			);
@@ -108,14 +105,12 @@ export default function ComprasPage() {
 		}
 	};
 
-	// Manejar redirección de autenticación
 	useEffect(() => {
 		if (!user && !isLoading) {
 			router.push("/auth/login");
 		}
 	}, [user, isLoading, router]);
 
-	// Mostrar loading si está cargando autenticación
 	if (isLoading) {
 		return (
 			<MainLayout>
@@ -131,12 +126,10 @@ export default function ComprasPage() {
 		);
 	}
 
-	// Si no hay usuario después de cargar, redirigir
 	if (!user) {
 		return null;
 	}
 
-	// Mostrar loading si está cargando datos
 	if (loading) {
 		return (
 			<MainLayout>
@@ -152,7 +145,6 @@ export default function ComprasPage() {
 		);
 	}
 
-	// Función para obtener el estado formateado
 	const getEstadoFormatted = (estado: string) => {
 		return {
 			text: EstadoTexto[estado as keyof typeof EstadoTexto] || estado,
@@ -162,7 +154,6 @@ export default function ComprasPage() {
 		};
 	};
 
-	// Función para formatear fecha
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleDateString("es-ES", {
 			year: "numeric",
