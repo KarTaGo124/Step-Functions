@@ -100,13 +100,13 @@ export async function handler(event) {
     if (decision === 'approve') {
       console.log('✅ Aprobando compra y continuando workflow...');
       
-      const originalWorkflowData = {
+      const approvedWorkflowData = {
         compra_id: compra_id,
         tenant_id: tenant_id,
         user_id: compraData.Item?.user_id,
         total: compraData.Item?.total,
         productos: compraData.Item?.productos,
-        approved: true,
+        approval_status: 'approved',
         approver: approver,
         approval_timestamp: new Date().toISOString(),
         reason: reason
@@ -114,16 +114,27 @@ export async function handler(event) {
       
       await stepfunctions.sendTaskSuccess({
         taskToken: finalTaskToken,
-        output: JSON.stringify(originalWorkflowData)
+        output: JSON.stringify(approvedWorkflowData)
       }).promise();
       
     } else {
-      console.log('❌ Rechazando compra y terminando workflow...');
+      console.log('❌ Rechazando compra pero enviando notificación al cliente...');
       
-      await stepfunctions.sendTaskFailure({
+      const rejectedWorkflowData = {
+        compra_id: compra_id,
+        tenant_id: tenant_id,
+        user_id: compraData.Item?.user_id,
+        total: compraData.Item?.total,
+        productos: compraData.Item?.productos,
+        approval_status: 'rejected',
+        rejection_reason: reason || 'No se proporcionó motivo específico',
+        rejected_by: approver || 'Supervisor',
+        rejected_at: new Date().toISOString()
+      };
+      
+      await stepfunctions.sendTaskSuccess({
         taskToken: finalTaskToken,
-        error: 'CompraRechazada',
-        cause: reason || 'Compra rechazada por supervisor'
+        output: JSON.stringify(rejectedWorkflowData)
       }).promise();
     }
     

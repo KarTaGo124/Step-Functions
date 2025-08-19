@@ -16,22 +16,23 @@ export async function handler(event) {
     let subject = 'Pedido Completado';
     let message = 'Su pedido ha sido procesado exitosamente';
     
+    // Solo 3 casos para el cliente:
     if (event.notification_type === 'inventory_failed') {
+      // Caso 1: Error después de pago procesado
       notificationType = 'inventory_failed';
       subject = `Problema con Pedido #${compra_id} - Reembolso Requerido`;
       message = `Lamentamos informarle que hubo un problema con su pedido. Su pago de $${total} USD fue procesado correctamente, pero el producto ya no está disponible. Procederemos con el reembolso inmediatamente.`;
-    } else if (event.inventory_status === 'updated') {
+    } else if (event.notification_type === 'approval_rejected') {
+      // Caso 2: Pedido rechazado por supervisor
+      notificationType = 'approval_rejected';
+      subject = `Pedido #${compra_id} - No Aprobado`;
+      const rejectionReason = event.rejection_reason || 'No se proporcionó motivo específico';
+      message = `Lamentamos informarle que su pedido de alto valor ($${total} USD) no fue aprobado por nuestro equipo de supervisión. Motivo: ${rejectionReason}. Su pago será reembolsado completamente en 3-5 días hábiles.`;
+    } else {
+      // Caso 3: Pedido completado exitosamente
       notificationType = 'order_completed';
       subject = `Pedido #${compra_id} - Completado`;
       message = `¡Excelente! Su pedido por $${total} USD ha sido procesado y facturado exitosamente.`;
-    } else if (event.payment_status === 'completed') {
-      notificationType = 'payment_confirmation';
-      subject = `Pago Confirmado - Pedido #${compra_id}`;
-      message = `Su pago de $${total} USD ha sido procesado exitosamente.`;
-    } else if (event.approval_required) {
-      notificationType = 'approval_required';
-      subject = `Aprobación Requerida - Pedido #${compra_id}`;
-      message = `Su pedido de alto valor ($${total} USD) requiere aprobación del supervisor.`;
     }
     
     const notification = {
@@ -102,6 +103,16 @@ export async function handler(event) {
       console.warn('⚠️  SNS no configurado:', snsError.message);
     }
     
+    // Determinar el estado final según el tipo de notificación
+    let finalStatus;
+    if (notificationType === 'inventory_failed') {
+      finalStatus = 'fallido_requiere_reembolso';
+    } else if (notificationType === 'approval_rejected') {
+      finalStatus = 'rechazado_requiere_reembolso';
+    } else {
+      finalStatus = 'completado';
+    }
+
     await dynamodb.update({
       TableName: COMPRAS_TABLE,
       Key: {
@@ -110,7 +121,7 @@ export async function handler(event) {
       },
       UpdateExpression: 'SET estado = :estado, notifications = :notifications, updated_at = :updated_at',
       ExpressionAttributeValues: {
-        ':estado': 'completado',
+        ':estado': finalStatus,
         ':notifications': {
           last_notification: notification,
           total_sent: notification.channels.filter(c => c.status === 'sent').length,
@@ -128,7 +139,7 @@ export async function handler(event) {
       notification_status: 'sent',
       notification_details: notification,
       notification_timestamp: new Date().toISOString(),
-      final_status: 'completed'
+      final_status: finalStatus
     };
     
   } catch (error) {

@@ -71,9 +71,9 @@ functions:
   processRestock:
     handler: workflow-2-inventory-management/processRestock.handler
           
-  # Common Handlers
+  # Workflow 1 specific handlers
   sendNotification:
-    handler: common-handlers/sendNotification.handler
+    handler: workflow-1-order-processing/sendNotification.handler
 
 stepFunctions:
   stateMachines:
@@ -130,12 +130,42 @@ stepFunctions:
                 tenant_id.$: "$.tenant_id"
                 taskToken.$: "$$.Task.Token"
             TimeoutSeconds: 86400
-            Next: ProcessPayment
+            Next: CheckApprovalResult
             Catch:
               - ErrorEquals: ["States.Timeout"]
                 Next: ApprovalTimeout
               - ErrorEquals: ["States.ALL"]
                 Next: OrderFailed
+
+          CheckApprovalResult:
+            Type: Choice
+            Choices:
+              - Variable: "$.approval_status"
+                StringEquals: "approved"
+                Next: ProcessPayment
+              - Variable: "$.approval_status"
+                StringEquals: "rejected"
+                Next: SendRejectionNotification
+            Default: OrderFailed
+
+          SendRejectionNotification:
+            Type: Task
+            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
+            Parameters:
+              notification_type: "approval_rejected"
+              compra_id.$: "$.compra_id"
+              tenant_id.$: "$.tenant_id"
+              user_id.$: "$.user_id"
+              total.$: "$.total"
+              rejection_reason.$: "$.rejection_reason"
+              rejected_by.$: "$.rejected_by"
+              rejected_at.$: "$.rejected_at"
+            Next: OrderRejected
+
+          OrderRejected:
+            Type: Fail
+            Error: "OrderRejected"
+            Cause: "El pedido fue rechazado durante la aprobación manual"
 
           ProcessPayment:
             Type: Task
@@ -157,7 +187,7 @@ stepFunctions:
           UpdateInventory:
             Type: Task
             Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-updateInventory
-            Next: SendNotification
+            Next: SendOrderCompletedNotification
             Retry:
               - ErrorEquals: ["States.TaskFailed"]
                 IntervalSeconds: 5
@@ -165,10 +195,10 @@ stepFunctions:
                 BackoffRate: 2.0
             Catch:
               - ErrorEquals: ["States.ALL"]
-                Next: InventoryUpdateFailed
+                Next: SendRaceConditionStockNotification
                 ResultPath: "$.inventory_error"
 
-          SendNotification:
+          SendOrderCompletedNotification:
             Type: Task
             Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
             Next: OrderCompleted
@@ -177,7 +207,7 @@ stepFunctions:
             Type: Succeed
             Comment: "Pedido procesado exitosamente"
 
-          InventoryUpdateFailed:
+          SendRaceConditionStockNotification:
             Type: Task
             Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
             Parameters:
@@ -255,15 +285,10 @@ stepFunctions:
               producto_codigo.$: "$.producto_codigo"
               restock_quantity.$: "$.restock_quantity"
               supervisor.$: "$.supervisor"
-            Next: SendNotification
+            Next: InventoryUpdated
             Catch:
               - ErrorEquals: ["States.ALL"]
                 Next: RestockFailed
-
-          SendNotification:
-            Type: Task
-            Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-sendNotification
-            Next: InventoryUpdated
 
           InventoryUpdated:
             Type: Succeed
