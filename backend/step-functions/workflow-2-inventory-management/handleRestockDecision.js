@@ -111,12 +111,11 @@ export async function handler(event) {
     if (decision === 'approve_restock') {
       console.log(`✅ Aprobando restock de ${restock_quantity} unidades...`);
       
-      const originalWorkflowData = {
+      const approvedWorkflowData = {
         tenant_id: tenant_id,
         producto_codigo: producto_codigo,
         restock_quantity: restock_quantity,
         supervisor: supervisor,
-        approved: true,
         decision: decision,
         approval_timestamp: new Date().toISOString(),
         low_stock_alert: productData.Item?.stock_alert || {
@@ -128,16 +127,51 @@ export async function handler(event) {
       
       await stepfunctions.sendTaskSuccess({
         taskToken: finalTaskToken,
-        output: JSON.stringify(originalWorkflowData)
+        output: JSON.stringify(approvedWorkflowData)
       }).promise();
       
-    } else {
-      console.log(`❌ ${decision === 'delay_restock' ? 'Posponiendo' : 'Discontinuando'} restock...`);
+    } else if (decision === 'delay_restock') {
+      console.log(`⏸️ Posponiendo restock...`);
       
-      await stepfunctions.sendTaskFailure({
+      const delayedWorkflowData = {
+        tenant_id: tenant_id,
+        producto_codigo: producto_codigo,
+        supervisor: supervisor,
+        decision: decision,
+        delay_reason: body.delay_reason || 'No especificado',
+        decision_timestamp: new Date().toISOString(),
+        low_stock_alert: productData.Item?.stock_alert || {
+          codigo: producto_codigo,
+          severity: 'medium',
+          current_stock: productData.Item?.stock || 0
+        }
+      };
+      
+      await stepfunctions.sendTaskSuccess({
         taskToken: finalTaskToken,
-        error: decision === 'delay_restock' ? 'RestockDelayed' : 'ProductDiscontinued',
-        cause: `Decisión: ${decision} - Supervisor: ${supervisor}`
+        output: JSON.stringify(delayedWorkflowData)
+      }).promise();
+      
+    } else if (decision === 'discontinue') {
+      console.log(`🚫 Discontinuando producto...`);
+      
+      const discontinuedWorkflowData = {
+        tenant_id: tenant_id,
+        producto_codigo: producto_codigo,
+        supervisor: supervisor,
+        decision: decision,
+        discontinue_reason: body.discontinue_reason || 'No especificado',
+        decision_timestamp: new Date().toISOString(),
+        low_stock_alert: productData.Item?.stock_alert || {
+          codigo: producto_codigo,
+          severity: 'medium',
+          current_stock: productData.Item?.stock || 0
+        }
+      };
+      
+      await stepfunctions.sendTaskSuccess({
+        taskToken: finalTaskToken,
+        output: JSON.stringify(discontinuedWorkflowData)
       }).promise();
     }
     

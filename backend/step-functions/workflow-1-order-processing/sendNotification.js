@@ -103,14 +103,13 @@ export async function handler(event) {
       console.warn('⚠️  SNS no configurado:', snsError.message);
     }
     
-    // Determinar el estado final según el tipo de notificación
     let finalStatus;
     if (notificationType === 'inventory_failed') {
-      finalStatus = 'fallido_requiere_reembolso';
+      finalStatus = 'reembolso_requerido';
     } else if (notificationType === 'approval_rejected') {
-      finalStatus = 'rechazado_requiere_reembolso';
+      finalStatus = 'rechazado';
     } else {
-      finalStatus = 'completado';
+      finalStatus = 'completado'; 
     }
 
     await dynamodb.update({

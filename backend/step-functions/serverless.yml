@@ -163,9 +163,8 @@ stepFunctions:
             Next: OrderRejected
 
           OrderRejected:
-            Type: Fail
-            Error: "OrderRejected"
-            Cause: "El pedido fue rechazado durante la aprobación manual"
+            Type: Succeed
+            Comment: "El pedido fue rechazado durante la aprobación manual - Resultado de negocio válido"
 
           ProcessPayment:
             Type: Task
@@ -183,6 +182,14 @@ stepFunctions:
             Type: Task
             Resource: arn:aws:lambda:us-east-1:501635705879:function:step-functions-workflows-dev-generateInvoice
             Next: UpdateInventory
+            Retry:
+              - ErrorEquals: ["States.TaskFailed"]
+                IntervalSeconds: 2
+                MaxAttempts: 3
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: OrderFailed
 
           UpdateInventory:
             Type: Task
@@ -221,9 +228,8 @@ stepFunctions:
             Next: RefundRequired
 
           RefundRequired:
-            Type: Fail
-            Error: "InventoryRaceCondition"
-            Cause: "Stock insuficiente durante la actualización - Se requiere reembolso manual"
+            Type: Succeed
+            Comment: "Stock insuficiente durante la actualización - Se requiere reembolso manual (resultado de negocio válido por condición de carrera)"
 
           ApprovalTimeout:
             Type: Fail
@@ -270,12 +276,26 @@ stepFunctions:
                 severity.$: "$.severity"
                 taskToken.$: "$$.Task.Token"
             TimeoutSeconds: 604800
-            Next: ProcessRestock
+            Next: CheckRestockDecision
             Catch:
               - ErrorEquals: ["States.Timeout"]
                 Next: RestockTimeout
               - ErrorEquals: ["States.ALL"]
                 Next: AlertFailed
+
+          CheckRestockDecision:
+            Type: Choice
+            Choices:
+              - Variable: "$.decision"
+                StringEquals: "approve_restock"
+                Next: ProcessRestock
+              - Variable: "$.decision"
+                StringEquals: "delay_restock"
+                Next: RestockDelayed
+              - Variable: "$.decision"
+                StringEquals: "discontinue"
+                Next: ProductDiscontinued
+            Default: ProcessRestock
 
           ProcessRestock:
             Type: Task
@@ -290,6 +310,14 @@ stepFunctions:
               - ErrorEquals: ["States.ALL"]
                 Next: RestockFailed
 
+          RestockDelayed:
+            Type: Succeed
+            Comment: "Restock fue postergado por decisión del supervisor - Resultado de negocio válido"
+
+          ProductDiscontinued:
+            Type: Succeed
+            Comment: "Producto descontinuado por decisión del supervisor - Resultado de negocio válido"
+
           InventoryUpdated:
             Type: Succeed
             Comment: "Inventario actualizado exitosamente"
@@ -299,9 +327,8 @@ stepFunctions:
             Comment: "Stock suficiente, no se requiere restock"
 
           RestockTimeout:
-            Type: Fail
-            Error: "RestockTimeout"
-            Cause: "La decisión de restock no se recibió en 7 días"
+            Type: Succeed
+            Comment: "No se recibió respuesta del supervisor en 7 días - Producto mantiene estado de stock bajo"
 
           AlertFailed:
             Type: Fail

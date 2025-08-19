@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CartModal } from "@/components/CartModal";
 import { useRouter } from "next/navigation";
-import { Product, Compra } from "@/types";
+import { Product, Compra, EstadoTexto, EstadoColor } from "@/types";
 import { productsService, purchasesService } from "@/lib/api";
 import toast from "react-hot-toast";
 
@@ -127,6 +127,15 @@ export default function DashboardPage() {
 		if (!hasMoreProducts || isLoadingMore) return;
 		await loadData(true, searchTerm);
 	}, [hasMoreProducts, isLoadingMore, loadData, searchTerm]);
+
+	const getEstadoFormatted = (estado: string) => {
+		return {
+			text: EstadoTexto[estado as keyof typeof EstadoTexto] || estado,
+			color:
+				EstadoColor[estado as keyof typeof EstadoColor] ||
+				"bg-gray-100 text-gray-800",
+		};
+	};
 
 	const addToCart = (product: Product) => {
 		if (!user || isLoading) {
@@ -267,14 +276,17 @@ export default function DashboardPage() {
 												)}
 											</span>
 											<span
-												className={`text-xs px-2 py-1 rounded-full ${
-													compra.estado ===
-													"completado"
-														? "bg-green-100 text-green-800"
-														: "bg-yellow-100 text-yellow-800"
+												className={`text-xs px-2 py-1 rounded-full font-medium ${
+													getEstadoFormatted(
+														compra.estado
+													).color
 												}`}
 											>
-												{compra.estado}
+												{
+													getEstadoFormatted(
+														compra.estado
+													).text
+												}
 											</span>
 										</div>
 										<p className="text-sm text-gray-700 mb-2">

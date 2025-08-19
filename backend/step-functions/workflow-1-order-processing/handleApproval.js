@@ -64,7 +64,7 @@ export async function handler(event) {
       };
     }
     
-    const newStatus = decision === 'approve' ? 'aprobado' : 'rechazado';
+    const newStatus = decision === 'approve' ? 'procesando' : 'rechazado';
     const approvalResult = {
       decision: decision,
       approver: approver || 'supervisor',
